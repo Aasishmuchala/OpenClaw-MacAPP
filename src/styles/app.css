@@ -46,6 +46,57 @@ body {
   border-width: 0;
 }
 
+.oc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.oc-modal {
+  width: min(560px, 100%);
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: linear-gradient(180deg, rgba(20, 24, 34, 0.98), rgba(12, 15, 23, 0.96));
+  box-shadow: var(--shadow);
+  overscroll-behavior: contain;
+}
+
+.oc-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.oc-modal-title {
+  font-weight: 750;
+}
+
+.oc-modal-x {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.oc-modal-body {
+  padding: 14px;
+}
+
+.oc-modal-foot {
+  padding: 12px 14px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .oc-sidebar {
   position: relative;
   padding: 18px;

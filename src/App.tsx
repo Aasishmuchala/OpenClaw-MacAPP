@@ -5,6 +5,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { PermissionsPanel } from "./PermissionsPanel";
 import { ModelsPanel } from "./ModelsPanel";
 import { SidebarNav, type SectionKey } from "./components/SidebarNav";
+import { Modal } from "./components/Modal";
 import { ProfileSidebar } from "./panels/ProfileSidebar";
 import { TopBar } from "./panels/TopBar";
 import { ChatsPanel } from "./panels/ChatsPanel";
@@ -52,6 +53,17 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const [launchOnLogin, setLaunchOnLogin] = useState<boolean | null>(null);
   const [section, setSection] = useState<SectionKey>("chats");
+
+  const [modal, setModal] = useState<
+    | null
+    | { kind: "rename_profile"; profileId: string; value: string }
+    | { kind: "delete_profile"; profileId: string }
+    | { kind: "rename_chat"; chatId: string; value: string }
+    | { kind: "delete_chat"; chatId: string }
+    | { kind: "secret_set"; value: string }
+    | { kind: "secret_show"; value: string | null }
+    | { kind: "secret_delete" }
+  >(null);
 
   const active = useMemo(() => {
     const id = store?.active_profile_id ?? null;
@@ -207,39 +219,17 @@ export default function App() {
   }
 
   async function renameProfile(profileId: string) {
-    const name = prompt("New profile name?");
-    if (!name) return;
-    setBusy("Renaming…");
-    try {
-      const s = await profilesRename(profileId, name);
-      setStore(s);
-    } finally {
-      setBusy(null);
-    }
+    const current = store?.profiles.find((p) => p.id === profileId)?.name ?? "";
+    setModal({ kind: "rename_profile", profileId, value: current });
   }
 
   async function deleteProfile(profileId: string) {
-    if (!confirm("Delete this profile? This cannot be undone.")) return;
-    setBusy("Deleting…");
-    try {
-      const s = await profilesDelete(profileId);
-      setStore(s);
-    } finally {
-      setBusy(null);
-    }
+    setModal({ kind: "delete_profile", profileId });
   }
 
   async function demoSecretWrite() {
     if (!active) return;
-    const v = prompt("Set a demo secret value (stored in Keychain)");
-    if (v == null) return;
-    setBusy("Writing secret…");
-    try {
-      await secretSet(active.id, "demo.secret", v);
-      alert("Saved to Keychain for this profile.");
-    } finally {
-      setBusy(null);
-    }
+    setModal({ kind: "secret_set", value: "" });
   }
 
   async function demoSecretRead() {
@@ -247,7 +237,7 @@ export default function App() {
     setBusy("Reading secret…");
     try {
       const v = await secretGet(active.id, "demo.secret");
-      alert(v ? `Keychain value: ${v}` : "No demo secret set.");
+      setModal({ kind: "secret_show", value: v });
     } finally {
       setBusy(null);
     }
@@ -255,13 +245,7 @@ export default function App() {
 
   async function demoSecretDelete() {
     if (!active) return;
-    setBusy("Deleting secret…");
-    try {
-      await secretDelete(active.id, "demo.secret");
-      alert("Deleted.");
-    } finally {
-      setBusy(null);
-    }
+    setModal({ kind: "secret_delete" });
   }
 
   async function createChat(title?: string) {
@@ -288,32 +272,13 @@ export default function App() {
     }
   }
 
-  async function renameChat(id: string) {
-    if (!active) return;
-    const title = prompt("Rename chat to?");
-    if (!title) return;
-    setBusy("Renaming chat…");
-    try {
-      const idx = await chatsRename(active.id, id, title);
-      setChats(idx.chats);
-    } finally {
-      setBusy(null);
-    }
+  async function renameChat(chatId: string) {
+    const current = chats.find((c) => c.id === chatId)?.title ?? "";
+    setModal({ kind: "rename_chat", chatId, value: current });
   }
 
-  async function deleteChat(id: string) {
-    if (!active) return;
-    if (!confirm("Delete this chat?")) return;
-    setBusy("Deleting chat…");
-    try {
-      const idx = await chatsDelete(active.id, id);
-      setChats(idx.chats);
-      if (activeChatId === id) {
-        setActiveChatId(idx.chats[0]?.id ?? null);
-      }
-    } finally {
-      setBusy(null);
-    }
+  async function deleteChat(chatId: string) {
+    setModal({ kind: "delete_chat", chatId });
   }
 
   async function send() {
@@ -412,6 +377,272 @@ export default function App() {
 
       <main className="oc-main">
         <TopBar title={active ? active.name : "…"} subtitle="Local profiles · OpenClaw gateway" right={topbarRight} />
+
+        <Modal
+          open={modal?.kind === "rename_profile"}
+          title="Rename Profile"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy || modal?.kind !== "rename_profile" || !modal.value.trim()}
+                onClick={async () => {
+                  if (!modal || modal.kind !== "rename_profile") return;
+                  setBusy("Renaming…");
+                  try {
+                    const s = await profilesRename(modal.profileId, modal.value.trim());
+                    setStore(s);
+                    setModal(null);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Save
+              </button>
+            </>
+          }
+        >
+          <div className="oc-field">
+            <div className="oc-field-label">Profile name</div>
+            <label className="sr-only" htmlFor="rename-profile">Profile name</label>
+            <input
+              id="rename-profile"
+              name="rename-profile"
+              className="oc-input"
+              value={modal?.kind === "rename_profile" ? modal.value : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setModal((m) => (m && m.kind === "rename_profile" ? { ...m, value: v } : m));
+              }}
+              disabled={!!busy}
+            />
+          </div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "delete_profile"}
+          title="Delete Profile"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy || store?.profiles.length === 1}
+                onClick={async () => {
+                  if (!modal || modal.kind !== "delete_profile") return;
+                  setBusy("Deleting…");
+                  try {
+                    const s = await profilesDelete(modal.profileId);
+                    setStore(s);
+                    setModal(null);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div className="oc-muted">This cannot be undone.</div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "rename_chat"}
+          title="Rename Chat"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy || modal?.kind !== "rename_chat" || !modal.value.trim()}
+                onClick={async () => {
+                  if (!active) return;
+                  if (!modal || modal.kind !== "rename_chat") return;
+                  setBusy("Renaming chat…");
+                  try {
+                    const idx = await chatsRename(active.id, modal.chatId, modal.value.trim());
+                    setChats(idx.chats);
+                    setModal(null);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Save
+              </button>
+            </>
+          }
+        >
+          <div className="oc-field">
+            <div className="oc-field-label">Chat title</div>
+            <label className="sr-only" htmlFor="rename-chat">Chat title</label>
+            <input
+              id="rename-chat"
+              name="rename-chat"
+              className="oc-input"
+              value={modal?.kind === "rename_chat" ? modal.value : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setModal((m) => (m && m.kind === "rename_chat" ? { ...m, value: v } : m));
+              }}
+              disabled={!!busy}
+            />
+          </div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "delete_chat"}
+          title="Delete Chat"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy}
+                onClick={async () => {
+                  if (!active) return;
+                  if (!modal || modal.kind !== "delete_chat") return;
+                  setBusy("Deleting chat…");
+                  try {
+                    const idx = await chatsDelete(active.id, modal.chatId);
+                    setChats(idx.chats);
+                    if (activeChatId === modal.chatId) {
+                      setActiveChatId(idx.chats[0]?.id ?? null);
+                    }
+                    setModal(null);
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div className="oc-muted">This cannot be undone.</div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "secret_set"}
+          title="Set Demo Secret"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy || modal?.kind !== "secret_set"}
+                onClick={async () => {
+                  if (!active) return;
+                  if (!modal || modal.kind !== "secret_set") return;
+                  setBusy("Writing secret…");
+                  try {
+                    await secretSet(active.id, "demo.secret", modal.value);
+                    setModal({ kind: "secret_show", value: modal.value });
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Save
+              </button>
+            </>
+          }
+        >
+          <div className="oc-field">
+            <div className="oc-field-label">Value</div>
+            <div className="oc-field-help">Stored in macOS Keychain for the active profile.</div>
+            <label className="sr-only" htmlFor="secret">Secret value</label>
+            <input
+              id="secret"
+              name="secret"
+              className="oc-input"
+              value={modal?.kind === "secret_set" ? modal.value : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setModal((m) => (m && m.kind === "secret_set" ? { ...m, value: v } : m));
+              }}
+              disabled={!!busy}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "secret_show"}
+          title="Demo Secret"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)}>
+                Close
+              </button>
+            </>
+          }
+        >
+          <div className="oc-mono">
+            <div className="oc-mono-title">Value</div>
+            <pre>{modal?.kind === "secret_show" ? modal.value ?? "(not set)" : ""}</pre>
+          </div>
+        </Modal>
+
+        <Modal
+          open={modal?.kind === "secret_delete"}
+          title="Delete Demo Secret"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} disabled={!!busy}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={!!busy}
+                onClick={async () => {
+                  if (!active) return;
+                  setBusy("Deleting secret…");
+                  try {
+                    await secretDelete(active.id, "demo.secret");
+                    setModal({ kind: "secret_show", value: null });
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div className="oc-muted">This removes the secret from Keychain for the active profile.</div>
+        </Modal>
 
         <div className="oc-content">
           <div className="oc-grid">

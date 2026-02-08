@@ -38,11 +38,17 @@ export function SettingsPanel(props: { profileId: string; busy: boolean; onBusy:
           <div className="oc-field-help">
             Leave blank to auto-detect <code>openclaw</code> from PATH.
           </div>
+          <label className="sr-only" htmlFor="openclaw-path">OpenClaw CLI Path</label>
           <input
+            id="openclaw-path"
+            name="openclaw-path"
             className="oc-input"
             value={path}
             onChange={(e) => setPath(e.target.value)}
             placeholder="/path/to/openclaw"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             disabled={props.busy}
           />
           <div className="oc-row" style={{ marginTop: 10 }}>
