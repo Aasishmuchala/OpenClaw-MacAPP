@@ -228,6 +228,7 @@ struct AgentPayload {
 fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
   let mut args: Vec<String> = vec![
     "agent".into(),
+    "--local".into(),
     "--session-id".into(),
     session_id.into(),
     "--message".into(),
@@ -235,6 +236,8 @@ fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: 
     "--json".into(),
     "--channel".into(),
     "last".into(),
+    "--timeout".into(),
+    "120".into(),
   ];
 
   if let Some(t) = thinking {

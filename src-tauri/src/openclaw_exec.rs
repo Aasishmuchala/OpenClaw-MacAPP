@@ -14,6 +14,8 @@ pub fn run_openclaw(_app: &AppHandle, openclaw_bin: PathBuf, args: Vec<String>) 
   if crate::settings::is_node_script(&oc) {
     let node = crate::settings::resolve_node_bin().context("failed to resolve node binary")?;
     return Command::new(node)
+      .env("NODE_NO_WARNINGS", "1")
+      .env("NODE_OPTIONS", "--no-deprecation")
       .arg(oc)
       .args(args)
       .output()
@@ -23,6 +25,8 @@ pub fn run_openclaw(_app: &AppHandle, openclaw_bin: PathBuf, args: Vec<String>) 
   // Otherwise execute the resolved binary, but ensure PATH contains node in case the binary is a shim.
   let node = crate::settings::resolve_node_bin().ok();
   let mut cmd = Command::new(oc);
+  cmd.env("NODE_NO_WARNINGS", "1");
+  cmd.env("NODE_OPTIONS", "--no-deprecation");
   cmd.args(args);
 
   if let Some(node) = node {
