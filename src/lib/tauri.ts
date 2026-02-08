@@ -43,3 +43,34 @@ export async function secretGet(profileId: string, key: string): Promise<string 
 export async function secretDelete(profileId: string, key: string): Promise<void> {
   return invoke("secret_delete", { profileId, key });
 }
+
+export type GatewayStatus = {
+  exit_code: number;
+  stdout: string;
+  stderr: string;
+};
+
+export type GatewayLogs = {
+  out: string;
+  err: string;
+};
+
+export async function gatewayStatus(): Promise<GatewayStatus> {
+  return invoke("gateway_status");
+}
+
+export async function gatewayStart(): Promise<GatewayStatus> {
+  return invoke("gateway_start");
+}
+
+export async function gatewayStop(): Promise<GatewayStatus> {
+  return invoke("gateway_stop");
+}
+
+export async function gatewayRestart(): Promise<GatewayStatus> {
+  return invoke("gateway_restart");
+}
+
+export async function gatewayLogs(lines = 200): Promise<GatewayLogs> {
+  return invoke("gateway_logs", { lines });
+}

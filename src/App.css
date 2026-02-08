@@ -236,11 +236,54 @@ button:disabled {
   margin-top: 18px;
 }
 
+.oc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
 .oc-card {
   border: 1px solid var(--stroke);
   border-radius: 16px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.oc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.oc-mono {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.oc-mono-title {
+  font-size: 12px;
+  color: var(--muted2);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.oc-mono pre {
+  margin: 0;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.oc-mono pre.danger {
+  color: rgba(255, 180, 190, 0.95);
 }
 
 .oc-card-title {

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import {
+  gatewayLogs,
+  gatewayRestart,
+  gatewayStart,
+  gatewayStatus,
+  gatewayStop,
   profilesCreate,
   profilesDelete,
   profilesList,
@@ -9,6 +14,8 @@ import {
   secretDelete,
   secretGet,
   secretSet,
+  type GatewayLogs,
+  type GatewayStatus,
   type ProfilesStore,
 } from "./lib/tauri";
 
@@ -21,6 +28,8 @@ export default function App() {
   const [store, setStore] = useState<ProfilesStore | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [newProfileName, setNewProfileName] = useState("");
+  const [gw, setGw] = useState<GatewayStatus | null>(null);
+  const [gwLogs, setGwLogs] = useState<GatewayLogs | null>(null);
 
   const active = useMemo(() => {
     const id = store?.active_profile_id ?? null;
@@ -38,6 +47,54 @@ export default function App() {
       }
     })();
   }, []);
+
+  async function refreshGateway() {
+    setBusy("Checking gateway…");
+    try {
+      const s = await gatewayStatus();
+      setGw(s);
+      const l = await gatewayLogs(200);
+      setGwLogs(l);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function gwStart() {
+    setBusy("Starting gateway…");
+    try {
+      const s = await gatewayStart();
+      setGw(s);
+      const l = await gatewayLogs(200);
+      setGwLogs(l);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function gwStop() {
+    setBusy("Stopping gateway…");
+    try {
+      const s = await gatewayStop();
+      setGw(s);
+      const l = await gatewayLogs(200);
+      setGwLogs(l);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function gwRestart() {
+    setBusy("Restarting gateway…");
+    try {
+      const s = await gatewayRestart();
+      setGw(s);
+      const l = await gatewayLogs(200);
+      setGwLogs(l);
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function createProfile() {
     const name = newProfileName.trim();
@@ -196,15 +253,57 @@ export default function App() {
         </div>
 
         <div className="oc-content">
-          <div className="oc-card">
-            <div className="oc-card-title">Milestone 1 (in progress)</div>
-            <div className="oc-card-body">
-              <ul>
-                <li>Profiles: create/switch/rename/delete ✅</li>
-                <li>Local storage: <code>profiles.json</code> in app data dir ✅</li>
-                <li>Keychain secrets per profile ✅</li>
-                <li>Next: chats + embedded gateway manager</li>
-              </ul>
+          <div className="oc-grid">
+            <div className="oc-card">
+              <div className="oc-card-title">Milestone 1 ✅</div>
+              <div className="oc-card-body">
+                <ul>
+                  <li>Profiles: create/switch/rename/delete</li>
+                  <li>Local storage: <code>profiles.json</code> in app data dir</li>
+                  <li>Keychain secrets per profile</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="oc-card">
+              <div className="oc-card-title">Gateway (Milestone 2)</div>
+              <div className="oc-card-body">
+                <div className="oc-row">
+                  <button className="primary" onClick={refreshGateway} disabled={!!busy}>
+                    Refresh
+                  </button>
+                  <button onClick={gwStart} disabled={!!busy}>
+                    Start
+                  </button>
+                  <button onClick={gwStop} disabled={!!busy}>
+                    Stop
+                  </button>
+                  <button onClick={gwRestart} disabled={!!busy}>
+                    Restart
+                  </button>
+                </div>
+
+                <div className="oc-mono">
+                  <div className="oc-mono-title">Status output</div>
+                  <pre>{gw?.stdout || "(not checked yet)"}</pre>
+                  {gw?.stderr ? (
+                    <>
+                      <div className="oc-mono-title">stderr</div>
+                      <pre className="danger">{gw.stderr}</pre>
+                    </>
+                  ) : null}
+                </div>
+
+                <div className="oc-mono">
+                  <div className="oc-mono-title">gateway.log (tail)</div>
+                  <pre>{gwLogs?.out || ""}</pre>
+                </div>
+
+                <div className="oc-mono">
+                  <div className="oc-mono-title">gateway.err.log (tail)</div>
+                  <pre className="danger">{gwLogs?.err || ""}</pre>
+                </div>
+              </div>
             </div>
           </div>
         </div>

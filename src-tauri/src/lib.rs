@@ -1,3 +1,4 @@
+mod gateway;
 mod profiles;
 mod state;
 
@@ -14,6 +15,11 @@ pub fn run() {
             profiles::secret_set,
             profiles::secret_get,
             profiles::secret_delete,
+            gateway::gateway_status,
+            gateway::gateway_start,
+            gateway::gateway_stop,
+            gateway::gateway_restart,
+            gateway::gateway_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
