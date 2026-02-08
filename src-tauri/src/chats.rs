@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, thread, time::Duration};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -319,22 +319,36 @@ fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: 
   let model_id = "ollama/huihui_ai/qwen3-vl-abliterated:8b";
   ensure_desktop_agent(app, bin.clone(), openclaw_profile, &chosen_agent, model_id).ok();
 
-  let out = crate::openclaw_exec::run_openclaw(app, bin, full_args)
-    .context("failed to run openclaw agent")?;
+  let mut last_err: Option<anyhow::Error> = None;
+  for attempt in 0..3 {
+    let out = crate::openclaw_exec::run_openclaw(app, bin.clone(), full_args.clone())
+      .context("failed to run openclaw agent")?;
 
-  if !out.status.success() {
+    if out.status.success() {
+      let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+      let parsed: AgentJsonResult = serde_json::from_str(&stdout).context("failed to parse agent JSON")?;
+      let text = parsed
+        .result
+        .and_then(|r| r.payloads.into_iter().find_map(|p| p.text))
+        .unwrap_or_else(|| "(no text payload)".to_string());
+
+      return Ok(text);
+    }
+
     let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-    return Err(anyhow::anyhow!(stderr));
+    let err = anyhow::anyhow!(stderr);
+
+    // Handle occasional stale session locks after interrupted runs.
+    if err.to_string().contains("session file locked") && attempt < 2 {
+      last_err = Some(err);
+      thread::sleep(Duration::from_millis(650));
+      continue;
+    }
+
+    return Err(err);
   }
 
-  let stdout = String::from_utf8_lossy(&out.stdout).to_string();
-  let parsed: AgentJsonResult = serde_json::from_str(&stdout).context("failed to parse agent JSON")?;
-  let text = parsed
-    .result
-    .and_then(|r| r.payloads.into_iter().find_map(|p| p.text))
-    .unwrap_or_else(|| "(no text payload)".to_string());
-
-  Ok(text)
+  Err(last_err.unwrap_or_else(|| anyhow::anyhow!("openclaw agent failed")))
 }
 
 #[derive(Debug, Serialize)]
