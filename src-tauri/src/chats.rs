@@ -173,6 +173,30 @@ pub fn chats_rename(app: AppHandle, profile_id: String, chat_id: String, title: 
 }
 
 #[tauri::command]
+pub fn chats_update(app: AppHandle, profile_id: String, chat_id: String, thinking: Option<String>, agent_id: Option<String>) -> Result<ChatIndex, String> {
+  let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
+  let c = idx
+    .chats
+    .iter_mut()
+    .find(|c| c.id == chat_id)
+    .ok_or_else(|| "chat not found".to_string())?;
+
+  c.thinking = thinking.and_then(|t| {
+    let x = t.trim().to_string();
+    if x.is_empty() { None } else { Some(x) }
+  });
+
+  c.agent_id = agent_id.and_then(|a| {
+    let x = a.trim().to_string();
+    if x.is_empty() { None } else { Some(x) }
+  });
+
+  c.updated_at_ms = now_ms();
+  save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
+  Ok(idx)
+}
+
+#[tauri::command]
 pub fn chats_delete(app: AppHandle, profile_id: String, chat_id: String) -> Result<ChatIndex, String> {
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
   idx.chats.retain(|c| c.id != chat_id);
@@ -251,13 +275,18 @@ pub struct ChatSendResult {
 #[tauri::command]
 pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: String) -> Result<ChatSendResult, String> {
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
-  let chat = idx
+  let pos = idx
     .chats
-    .iter_mut()
-    .find(|c| c.id == chat_id)
+    .iter()
+    .position(|c| c.id == chat_id)
     .ok_or_else(|| "chat not found".to_string())?;
 
-  let mut thread = load_thread(&app, &profile_id, &chat.id).map_err(|e| e.to_string())?;
+  let session_id = idx.chats[pos].session_id.clone();
+  let thinking = idx.chats[pos].thinking.clone();
+  let agent_id = idx.chats[pos].agent_id.clone();
+  let chat_id2 = idx.chats[pos].id.clone();
+
+  let mut thread = load_thread(&app, &profile_id, &chat_id2).map_err(|e| e.to_string())?;
 
   let msg_user = ChatMessage {
     id: new_id("m"),
@@ -267,16 +296,36 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   };
   thread.messages.push(msg_user);
 
+  // Persist user message even if agent call fails.
+  idx.chats[pos].updated_at_ms = now_ms();
+  save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
+  save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
+
   // call OpenClaw
-  let bin = openclaw_path(&app, &profile_id).map_err(|e| e.to_string())?;
-  let reply = run_agent(
-    bin,
-    &chat.session_id,
-    &text,
-    chat.thinking.as_deref(),
-    chat.agent_id.as_deref(),
-  )
-  .map_err(|e| e.to_string())?;
+  let reply = match openclaw_path(&app, &profile_id)
+    .and_then(|bin| {
+      run_agent(
+        bin,
+        &session_id,
+        &text,
+        thinking.as_deref(),
+        agent_id.as_deref(),
+      )
+    }) {
+    Ok(r) => r,
+    Err(e) => {
+      // Store error as assistant message (keeps UI consistent)
+      let msg_ai = ChatMessage {
+        id: new_id("m"),
+        role: ChatRole::Assistant,
+        text: format!("[error] {e}"),
+        created_at_ms: now_ms(),
+      };
+      thread.messages.push(msg_ai);
+      save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
+      return Ok(ChatSendResult { thread });
+    }
+  };
 
   let msg_ai = ChatMessage {
     id: new_id("m"),
@@ -286,7 +335,7 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   };
   thread.messages.push(msg_ai);
 
-  chat.updated_at_ms = now_ms();
+  idx.chats[pos].updated_at_ms = now_ms();
   save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
   save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
 

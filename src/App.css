@@ -385,6 +385,23 @@ button:disabled {
   margin-top: 2px;
 }
 
+.oc-thread-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.oc-select {
+  height: 34px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  outline: none;
+}
+
 .oc-thread {
   padding: 14px;
   height: 420px;

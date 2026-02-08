@@ -39,6 +39,7 @@ pub fn run() {
             chats::chats_delete,
             chats::chat_thread,
             chats::chat_send,
+            chats::chats_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -130,6 +130,19 @@ export async function chatsRename(profileId: string, chatId: string, title: stri
   return invoke("chats_rename", { profileId, chatId, title });
 }
 
+export async function chatsUpdate(
+  profileId: string,
+  chatId: string,
+  opts: { thinking?: string | null; agentId?: string | null }
+): Promise<ChatIndex> {
+  return invoke("chats_update", {
+    profileId,
+    chatId,
+    thinking: opts.thinking ?? null,
+    agentId: opts.agentId ?? null,
+  });
+}
+
 export async function chatsDelete(profileId: string, chatId: string): Promise<ChatIndex> {
   return invoke("chats_delete", { profileId, chatId });
 }

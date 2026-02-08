@@ -22,6 +22,7 @@ import {
   chatsDelete,
   chatsList,
   chatsRename,
+  chatsUpdate,
   chatSend,
   chatThread,
   type Chat,
@@ -274,6 +275,17 @@ export default function App() {
     }
   }
 
+  async function updateChatSettings(chatId: string, opts: { thinking?: string | null; agentId?: string | null }) {
+    if (!active) return;
+    setBusy("Saving chat settings…");
+    try {
+      const idx = await chatsUpdate(active.id, chatId, opts);
+      setChats(idx.chats);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function renameChat(id: string) {
     if (!active) return;
     const title = prompt("Rename chat to?");
@@ -439,6 +451,36 @@ export default function App() {
                             {chats.find((c) => c.id === activeChatId)?.title ?? "Select a chat"}
                           </div>
                           <div className="oc-thread-sub">Native UI → OpenClaw CLI (agent turns via gateway)</div>
+                          {activeChatId ? (
+                            <div className="oc-thread-controls">
+                              <select
+                                className="oc-select"
+                                value={chats.find((c) => c.id === activeChatId)?.thinking ?? "low"}
+                                disabled={!!busy}
+                                onChange={(e) => updateChatSettings(activeChatId, { thinking: e.currentTarget.value })}
+                              >
+                                {[
+                                  "off",
+                                  "minimal",
+                                  "low",
+                                  "medium",
+                                  "high",
+                                ].map((t) => (
+                                  <option key={t} value={t}>
+                                    thinking: {t}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                className="oc-input"
+                                style={{ height: 34, padding: "6px 10px" }}
+                                placeholder="agent id (optional)"
+                                defaultValue={chats.find((c) => c.id === activeChatId)?.agent_id ?? ""}
+                                disabled={!!busy}
+                                onBlur={(e) => updateChatSettings(activeChatId, { agentId: e.currentTarget.value })}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                         <div className="oc-thread-actions">
                           <button onClick={() => active && activeChatId && chatThread(active.id, activeChatId).then(setThread)} disabled={!active || !activeChatId || !!busy}>
