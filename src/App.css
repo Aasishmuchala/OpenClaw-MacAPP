@@ -1,4 +1,6 @@
 :root {
+  --ring: 0 0 0 3px rgba(124, 92, 255, 0.28);
+
   color-scheme: dark;
   --bg: #0b0f17;
   --panel: rgba(255, 255, 255, 0.06);
@@ -15,6 +17,7 @@
 
 html,
 body {
+  -webkit-tap-highlight-color: transparent;
   margin: 0;
   padding: 0;
   height: 100%;
@@ -31,7 +34,20 @@ body {
   height: 100vh;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .oc-sidebar {
+  position: relative;
   padding: 18px;
   border-right: 1px solid var(--stroke);
   background: rgba(0, 0, 0, 0.18);
@@ -93,7 +109,6 @@ body {
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  outline: none;
 }
 
 .oc-input {
@@ -103,7 +118,16 @@ body {
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
+}
+
+.oc-profile-create input:focus-visible,
+.oc-input:focus-visible,
+.oc-compose textarea:focus-visible,
+.oc-select:focus-visible,
+button:focus-visible {
   outline: none;
+  box-shadow: var(--ring);
+  border-color: rgba(124, 92, 255, 0.55);
 }
 
 .oc-field-label {
@@ -125,6 +149,15 @@ button {
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+button.primary:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 
 button.primary {
@@ -312,7 +345,6 @@ button:disabled {
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  outline: none;
 }
 
 .oc-chat-list {
@@ -399,7 +431,6 @@ button:disabled {
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  outline: none;
 }
 
 .oc-thread {
@@ -458,7 +489,6 @@ button:disabled {
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
-  outline: none;
 }
 
 .oc-empty {

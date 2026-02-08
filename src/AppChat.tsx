@@ -22,7 +22,14 @@ export function ChatList(props: {
       <div className="oc-section-title">Chats</div>
 
       <div className="oc-chat-create">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New chat title…" />
+        <label className="sr-only" htmlFor="new-chat-title">New Chat Title</label>
+        <input
+          id="new-chat-title"
+          name="new-chat-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="New chat title…"
+        />
         <button
           className="primary"
           disabled={props.busy}

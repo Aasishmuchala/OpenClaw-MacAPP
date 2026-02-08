@@ -47,7 +47,18 @@ export function ModelsPanel(props: { profileId: string; busy: boolean; onBusy: (
           <div className="oc-field-label">Set default model (per OpenClaw profile)</div>
           <div className="oc-field-help">Example: openai-codex/gpt-5.2</div>
           <div className="oc-row">
-            <input className="oc-input" value={model} onChange={(e) => setModel(e.target.value)} placeholder="model id" />
+            <label className="sr-only" htmlFor="default-model">Default Model</label>
+            <input
+              id="default-model"
+              name="default-model"
+              className="oc-input"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="model id"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
             <button className="primary" onClick={setDefault} disabled={props.busy || !model.trim()}>
               Set
             </button>
