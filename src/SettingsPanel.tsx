@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { settingsGet, settingsSetOpenclawPath, type ProfileSettings } from "./lib/tauri";
 
-export function SettingsPanel(props: { profileId: string; busy: boolean; onBusy: (v: string | null) => void }) {
+export function SettingsPanel(props: {
+  profileId: string;
+  busy: boolean;
+  onBusy: (v: string | null) => void;
+  onToast?: (t: { kind: "info" | "success" | "error"; title: string; message?: string }) => void;
+}) {
   const [s, setS] = useState<ProfileSettings | null>(null);
   const [path, setPath] = useState<string>("");
 
@@ -12,6 +17,9 @@ export function SettingsPanel(props: { profileId: string; busy: boolean; onBusy:
         const ss = await settingsGet(props.profileId);
         setS(ss);
         setPath(ss.openclaw_path ?? "");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        props.onToast?.({ kind: "error", title: "Failed to load settings", message: msg });
       } finally {
         props.onBusy(null);
       }
@@ -24,6 +32,10 @@ export function SettingsPanel(props: { profileId: string; busy: boolean; onBusy:
     try {
       const ss = await settingsSetOpenclawPath(props.profileId, path.trim() ? path.trim() : null);
       setS(ss);
+      props.onToast?.({ kind: "success", title: "Settings saved" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      props.onToast?.({ kind: "error", title: "Failed to save settings", message: msg });
     } finally {
       props.onBusy(null);
     }

@@ -288,6 +288,10 @@ export default function App() {
       const idx = await chatsList(active.id);
       setChats(idx.chats);
       setActiveChatId(c.id);
+      toasts.push({ kind: "success", title: "Chat created", message: c.title, timeoutMs: 2500 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Failed to create chat", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -324,6 +328,14 @@ export default function App() {
       setThread(res.thread);
       const idx = await chatsList(active.id);
       setChats(idx.chats);
+
+      const last = res.thread.messages[res.thread.messages.length - 1];
+      if (last?.role === "assistant" && last.text.startsWith("[error]")) {
+        toasts.push({ kind: "error", title: "Send failed", message: last.text, timeoutMs: 8000 });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Send failed", message: msg, timeoutMs: 8000 });
     } finally {
       setBusy(null);
     }
@@ -427,9 +439,11 @@ export default function App() {
                   if (!modal || modal.kind !== "rename_profile") return;
                   setBusy("Renaming…");
                   try {
-                    const s = await profilesRename(modal.profileId, modal.value.trim());
+                    const newName = modal.value.trim();
+                    const s = await profilesRename(modal.profileId, newName);
                     setStore(s);
                     setModal(null);
+                    toasts.push({ kind: "success", title: "Profile renamed", message: newName, timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -479,6 +493,7 @@ export default function App() {
                     const s = await profilesDelete(modal.profileId);
                     setStore(s);
                     setModal(null);
+                    toasts.push({ kind: "success", title: "Profile deleted", timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -510,9 +525,11 @@ export default function App() {
                   if (!modal || modal.kind !== "rename_chat") return;
                   setBusy("Renaming chat…");
                   try {
-                    const idx = await chatsRename(active.id, modal.chatId, modal.value.trim());
+                    const newTitle = modal.value.trim();
+                    const idx = await chatsRename(active.id, modal.chatId, newTitle);
                     setChats(idx.chats);
                     setModal(null);
+                    toasts.push({ kind: "success", title: "Chat renamed", message: newTitle, timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -566,6 +583,7 @@ export default function App() {
                       setActiveChatId(idx.chats[0]?.id ?? null);
                     }
                     setModal(null);
+                    toasts.push({ kind: "success", title: "Chat deleted", timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -599,6 +617,7 @@ export default function App() {
                   try {
                     await secretSet(active.id, "demo.secret", modal.value);
                     setModal({ kind: "secret_show", value: modal.value });
+                    toasts.push({ kind: "success", title: "Secret saved", timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -669,6 +688,7 @@ export default function App() {
                   try {
                     await secretDelete(active.id, "demo.secret");
                     setModal({ kind: "secret_show", value: null });
+                    toasts.push({ kind: "success", title: "Secret deleted", timeoutMs: 2500 });
                   } finally {
                     setBusy(null);
                   }
@@ -720,11 +740,21 @@ export default function App() {
             ) : null}
 
             {section === "models" && active ? (
-              <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} />
+              <ModelsPanel
+                profileId={active.id}
+                busy={!!busy}
+                onBusy={setBusy}
+                onToast={(t) => toasts.push({ ...t, timeoutMs: t.kind === "success" ? 2500 : 6000 })}
+              />
             ) : null}
             {section === "permissions" ? <PermissionsPanel /> : null}
             {section === "settings" && active ? (
-              <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} />
+              <SettingsPanel
+                profileId={active.id}
+                busy={!!busy}
+                onBusy={setBusy}
+                onToast={(t) => toasts.push({ ...t, timeoutMs: t.kind === "success" ? 2500 : 6000 })}
+              />
             ) : null}
           </div>
         </div>

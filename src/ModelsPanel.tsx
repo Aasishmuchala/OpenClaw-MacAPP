@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { modelsSetDefault, modelsStatus, type ModelsStatus } from "./lib/models";
 
-export function ModelsPanel(props: { profileId: string; busy: boolean; onBusy: (v: string | null) => void }) {
+export function ModelsPanel(props: {
+  profileId: string;
+  busy: boolean;
+  onBusy: (v: string | null) => void;
+  onToast?: (t: { kind: "info" | "success" | "error"; title: string; message?: string }) => void;
+}) {
   const [status, setStatus] = useState<ModelsStatus | null>(null);
   const [model, setModel] = useState("");
 
@@ -10,6 +15,9 @@ export function ModelsPanel(props: { profileId: string; busy: boolean; onBusy: (
     try {
       const s = await modelsStatus(props.profileId);
       setStatus(s);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      props.onToast?.({ kind: "error", title: "Failed to load models", message: msg });
     } finally {
       props.onBusy(null);
     }
@@ -28,6 +36,10 @@ export function ModelsPanel(props: { profileId: string; busy: boolean; onBusy: (
       const s = await modelsSetDefault(props.profileId, m);
       setStatus(s);
       setModel("");
+      props.onToast?.({ kind: "success", title: "Default model set", message: m });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      props.onToast?.({ kind: "error", title: "Failed to set default model", message: msg });
     } finally {
       props.onBusy(null);
     }
