@@ -36,7 +36,7 @@ pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSetting
       version: 1,
       openclaw_path: None,
       openclaw_profile: None,
-      ollama_base_url: Some("http://127.0.0.1:11434".to_string()),
+      ollama_base_url: Some("http://localhost:11434".to_string()),
       ollama_model: Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string()),
       dev_full_exec_auto: Some(false),
     });
@@ -51,7 +51,7 @@ pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSetting
     s.openclaw_profile = None;
   }
   if s.ollama_base_url.is_none() {
-    s.ollama_base_url = Some("http://127.0.0.1:11434".to_string());
+    s.ollama_base_url = Some("http://localhost:11434".to_string());
   }
   if s.ollama_model.is_none() {
     s.ollama_model = Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string());

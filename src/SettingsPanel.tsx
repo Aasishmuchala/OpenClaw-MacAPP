@@ -16,7 +16,7 @@ export function SettingsPanel(props: {
 }) {
   const [s, setS] = useState<ProfileSettings | null>(null);
   const [path, setPath] = useState<string>("");
-  const [ollamaBaseUrl, setOllamaBaseUrl] = useState<string>("http://127.0.0.1:11434");
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState<string>("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState<string>("ollama/huihui_ai/qwen3-abliterated:8b");
   const [devFullExecAuto, setDevFullExecAuto] = useState<boolean>(false);
   const [unlocked, setUnlocked] = useState<boolean>(false);
@@ -29,7 +29,7 @@ export function SettingsPanel(props: {
         const ss = await settingsGet(props.profileId);
         setS(ss);
         setPath(ss.openclaw_path ?? "");
-        setOllamaBaseUrl(ss.ollama_base_url ?? "http://127.0.0.1:11434");
+        setOllamaBaseUrl(ss.ollama_base_url ?? "http://localhost:11434");
         setOllamaModel(ss.ollama_model ?? "ollama/huihui_ai/qwen3-abliterated:8b");
         setDevFullExecAuto(Boolean(ss.dev_full_exec_auto));
       } catch (e) {

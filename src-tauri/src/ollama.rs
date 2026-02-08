@@ -31,13 +31,16 @@ pub struct OllamaChatResp {
 
 pub fn chat(base_url: &str, req: OllamaChatReq) -> Result<OllamaChatResp> {
   let url = format!("{}/api/chat", base_url.trim_end_matches('/'));
-  let client = Client::new();
+  let client = Client::builder()
+    .timeout(std::time::Duration::from_secs(120))
+    .build()
+    .context("failed to build http client")?;
 
   let resp = client
-    .post(url)
+    .post(&url)
     .json(&req)
     .send()
-    .context("ollama /api/chat request failed")?;
+    .with_context(|| format!("ollama /api/chat request failed ({url})"))?;
 
   if !resp.status().is_success() {
     let status = resp.status();

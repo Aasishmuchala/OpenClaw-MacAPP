@@ -489,7 +489,7 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
       let msg_ai = ChatMessage {
         id: new_id("m"),
         role: ChatRole::Assistant,
-        text: format!("[error] {e}"),
+        text: format!("[error] {e:#}"),
         created_at_ms: now_ms(),
       };
       thread.messages.push(msg_ai);
