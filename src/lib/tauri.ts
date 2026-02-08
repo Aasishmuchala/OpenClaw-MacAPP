@@ -74,3 +74,57 @@ export async function gatewayRestart(): Promise<GatewayStatus> {
 export async function gatewayLogs(lines = 200): Promise<GatewayLogs> {
   return invoke("gateway_logs", { lines });
 }
+
+export type Chat = {
+  id: string;
+  title: string;
+  session_id: string;
+  created_at_ms: number;
+  updated_at_ms: number;
+  agent_id: string | null;
+  thinking: string | null;
+};
+
+export type ChatIndex = {
+  version: number;
+  chats: Chat[];
+};
+
+export type ChatRole = "user" | "assistant";
+
+export type ChatMessage = {
+  id: string;
+  role: ChatRole;
+  text: string;
+  created_at_ms: number;
+};
+
+export type ChatThread = {
+  version: number;
+  chat_id: string;
+  messages: ChatMessage[];
+};
+
+export async function chatsList(profileId: string): Promise<ChatIndex> {
+  return invoke("chats_list", { profileId });
+}
+
+export async function chatsCreate(profileId: string, title?: string): Promise<Chat> {
+  return invoke("chats_create", { profileId, title });
+}
+
+export async function chatsRename(profileId: string, chatId: string, title: string): Promise<ChatIndex> {
+  return invoke("chats_rename", { profileId, chatId, title });
+}
+
+export async function chatsDelete(profileId: string, chatId: string): Promise<ChatIndex> {
+  return invoke("chats_delete", { profileId, chatId });
+}
+
+export async function chatThread(profileId: string, chatId: string): Promise<ChatThread> {
+  return invoke("chat_thread", { profileId, chatId });
+}
+
+export async function chatSend(profileId: string, chatId: string, text: string): Promise<{ thread: ChatThread }> {
+  return invoke("chat_send", { profileId, chatId, text });
+}

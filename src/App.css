@@ -242,6 +242,172 @@ button:disabled {
   gap: 16px;
 }
 
+.oc-chat-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+}
+
+.oc-chat-left {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding-right: 14px;
+}
+
+.oc-chat-right {
+  padding-left: 2px;
+}
+
+.oc-chat-create {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.oc-chat-create input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  outline: none;
+}
+
+.oc-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oc-chat {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.oc-chat.active {
+  border-color: rgba(124, 92, 255, 0.45);
+}
+
+.oc-chat-main {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  text-align: left;
+}
+
+.oc-chat-title {
+  font-weight: 650;
+}
+
+.oc-chat-sub {
+  font-size: 11px;
+  color: var(--muted2);
+}
+
+.oc-chat-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.oc-thread-wrap {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.oc-thread-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.oc-thread-title {
+  font-weight: 700;
+}
+
+.oc-thread-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.oc-thread {
+  padding: 14px;
+  height: 420px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oc-msg {
+  max-width: 86%;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.oc-msg.user {
+  align-self: flex-end;
+  background: rgba(124, 92, 255, 0.12);
+  border-color: rgba(124, 92, 255, 0.25);
+}
+
+.oc-msg.assistant {
+  align-self: flex-start;
+}
+
+.oc-msg-meta {
+  font-size: 11px;
+  color: var(--muted2);
+  margin-bottom: 6px;
+}
+
+.oc-msg-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgba(255, 255, 255, 0.90);
+  line-height: 1.5;
+}
+
+.oc-compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.oc-compose textarea {
+  resize: none;
+  height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  outline: none;
+}
+
+.oc-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 10px 4px;
+}
+
 .oc-card {
   border: 1px solid var(--stroke);
   border-radius: 16px;

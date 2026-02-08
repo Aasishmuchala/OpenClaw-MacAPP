@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { ChatList, ChatThreadView } from "./AppChat";
 import {
   gatewayLogs,
   gatewayRestart,
@@ -14,6 +15,14 @@ import {
   secretDelete,
   secretGet,
   secretSet,
+  chatsCreate,
+  chatsDelete,
+  chatsList,
+  chatsRename,
+  chatSend,
+  chatThread,
+  type Chat,
+  type ChatThread,
   type GatewayLogs,
   type GatewayStatus,
   type ProfilesStore,
@@ -31,6 +40,11 @@ export default function App() {
   const [gw, setGw] = useState<GatewayStatus | null>(null);
   const [gwLogs, setGwLogs] = useState<GatewayLogs | null>(null);
 
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [thread, setThread] = useState<ChatThread | null>(null);
+  const [draft, setDraft] = useState("");
+
   const active = useMemo(() => {
     const id = store?.active_profile_id ?? null;
     return store?.profiles.find((p) => p.id === id) ?? null;
@@ -47,6 +61,35 @@ export default function App() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (!active) return;
+      try {
+        const idx = await chatsList(active.id);
+        setChats(idx.chats);
+        const first = idx.chats[0]?.id ?? null;
+        setActiveChatId((prev) => prev ?? first);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [active?.id]);
+
+  useEffect(() => {
+    (async () => {
+      if (!active || !activeChatId) {
+        setThread(null);
+        return;
+      }
+      try {
+        const t = await chatThread(active.id, activeChatId);
+        setThread(t);
+      } catch {
+        setThread(null);
+      }
+    })();
+  }, [active?.id, activeChatId]);
 
   async function refreshGateway() {
     setBusy("Checking gateway…");
@@ -177,6 +220,63 @@ export default function App() {
     }
   }
 
+  async function createChat(title?: string) {
+    if (!active) return;
+    setBusy("Creating chat…");
+    try {
+      const c = await chatsCreate(active.id, title);
+      const idx = await chatsList(active.id);
+      setChats(idx.chats);
+      setActiveChatId(c.id);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function renameChat(id: string) {
+    if (!active) return;
+    const title = prompt("Rename chat to?");
+    if (!title) return;
+    setBusy("Renaming chat…");
+    try {
+      const idx = await chatsRename(active.id, id, title);
+      setChats(idx.chats);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteChat(id: string) {
+    if (!active) return;
+    if (!confirm("Delete this chat?")) return;
+    setBusy("Deleting chat…");
+    try {
+      const idx = await chatsDelete(active.id, id);
+      setChats(idx.chats);
+      if (activeChatId === id) {
+        setActiveChatId(idx.chats[0]?.id ?? null);
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function send() {
+    if (!active || !activeChatId) return;
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    setBusy("Sending…");
+    try {
+      const res = await chatSend(active.id, activeChatId, text);
+      setThread(res.thread);
+      const idx = await chatsList(active.id);
+      setChats(idx.chats);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="oc-shell">
       <aside className="oc-sidebar">
@@ -255,13 +355,52 @@ export default function App() {
         <div className="oc-content">
           <div className="oc-grid">
             <div className="oc-card">
-              <div className="oc-card-title">Milestone 1 ✅</div>
+              <div className="oc-card-title">Chats (Milestone 3)</div>
               <div className="oc-card-body">
-                <ul>
-                  <li>Profiles: create/switch/rename/delete</li>
-                  <li>Local storage: <code>profiles.json</code> in app data dir</li>
-                  <li>Keychain secrets per profile</li>
-                </ul>
+                <div className="oc-chat-layout">
+                  <div className="oc-chat-left">
+                    <ChatList
+                      chats={chats}
+                      activeChatId={activeChatId}
+                      onSelect={(id) => setActiveChatId(id)}
+                      onCreate={createChat}
+                      onRename={renameChat}
+                      onDelete={deleteChat}
+                      busy={!!busy}
+                    />
+                  </div>
+                  <div className="oc-chat-right">
+                    <div className="oc-thread-wrap">
+                      <div className="oc-thread-header">
+                        <div>
+                          <div className="oc-thread-title">
+                            {chats.find((c) => c.id === activeChatId)?.title ?? "Select a chat"}
+                          </div>
+                          <div className="oc-thread-sub">Native UI → OpenClaw CLI (agent turns via gateway)</div>
+                        </div>
+                        <div className="oc-thread-actions">
+                          <button onClick={() => active && activeChatId && chatThread(active.id, activeChatId).then(setThread)} disabled={!active || !activeChatId || !!busy}>
+                            Refresh
+                          </button>
+                        </div>
+                      </div>
+
+                      <ChatThreadView messages={thread?.messages ?? []} />
+
+                      <div className="oc-compose">
+                        <textarea
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          placeholder={activeChatId ? "Message…" : "Create a chat first"}
+                          disabled={!activeChatId || !!busy}
+                        />
+                        <button className="primary" onClick={send} disabled={!activeChatId || !!busy || !draft.trim()}>
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

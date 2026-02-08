@@ -1,3 +1,4 @@
+mod chats;
 mod gateway;
 mod profiles;
 mod state;
@@ -20,6 +21,12 @@ pub fn run() {
             gateway::gateway_stop,
             gateway::gateway_restart,
             gateway::gateway_logs,
+            chats::chats_list,
+            chats::chats_create,
+            chats::chats_rename,
+            chats::chats_delete,
+            chats::chat_thread,
+            chats::chat_send,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
