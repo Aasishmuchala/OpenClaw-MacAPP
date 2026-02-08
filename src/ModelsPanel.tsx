@@ -45,6 +45,8 @@ export function ModelsPanel(props: {
     }
   }
 
+  const ollamaPreset = "huihui_ai/qwen3-vl-abliterated:8b";
+
   return (
     <div className="oc-card">
       <div className="oc-card-title">Models</div>
@@ -52,6 +54,16 @@ export function ModelsPanel(props: {
         <div className="oc-row">
           <button className="primary" onClick={refresh} disabled={props.busy}>
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setModel(ollamaPreset);
+              props.onToast?.({ kind: "info", title: "Preset selected", message: ollamaPreset });
+            }}
+            disabled={props.busy}
+          >
+            Use Local Ollama (Qwen3-VL Abliterated 8B)
           </button>
         </div>
 
