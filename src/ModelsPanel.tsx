@@ -45,7 +45,7 @@ export function ModelsPanel(props: {
     }
   }
 
-  const ollamaPreset = "huihui_ai/qwen3-vl-abliterated:8b";
+  const ollamaPreset = "ollama/huihui_ai/qwen3-vl-abliterated:8b";
 
   return (
     <div className="oc-card">
