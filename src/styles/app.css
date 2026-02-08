@@ -1,18 +1,46 @@
 :root {
+  /* Theme tokens (default: dark) */
   --ring: 0 0 0 3px rgba(124, 92, 255, 0.28);
 
-  color-scheme: dark;
   --bg: #0b0f17;
+  --bg2: #070a10;
   --panel: rgba(255, 255, 255, 0.06);
   --panel2: rgba(255, 255, 255, 0.08);
-  --stroke: rgba(255, 255, 255, 0.1);
+  --stroke: rgba(255, 255, 255, 0.12);
+  --stroke2: rgba(255, 255, 255, 0.2);
   --text: rgba(255, 255, 255, 0.92);
-  --muted: rgba(255, 255, 255, 0.62);
-  --muted2: rgba(255, 255, 255, 0.45);
+  --muted: rgba(255, 255, 255, 0.65);
+  --muted2: rgba(255, 255, 255, 0.48);
   --accent: #7c5cff;
   --accent2: #27e5ff;
   --danger: #ff4d6d;
-  --shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.58);
+
+  --topline: linear-gradient(90deg, rgba(124, 92, 255, 0.6), rgba(39, 229, 255, 0.32), rgba(255, 77, 109, 0.22));
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ring: 0 0 0 3px rgba(38, 132, 255, 0.22);
+
+  --bg: #f7f8fb;
+  --bg2: #eef1f7;
+  --panel: rgba(255, 255, 255, 0.75);
+  --panel2: rgba(255, 255, 255, 0.9);
+  --stroke: rgba(15, 23, 42, 0.12);
+  --stroke2: rgba(15, 23, 42, 0.2);
+  --text: rgba(15, 23, 42, 0.92);
+  --muted: rgba(15, 23, 42, 0.65);
+  --muted2: rgba(15, 23, 42, 0.5);
+  --accent: #2563eb;
+  --accent2: #06b6d4;
+  --danger: #e11d48;
+  --shadow: 0 18px 60px rgba(2, 6, 23, 0.15);
+
+  --topline: linear-gradient(90deg, rgba(37, 99, 235, 0.55), rgba(6, 182, 212, 0.35), rgba(225, 29, 72, 0.22));
 }
 
 html,
@@ -21,9 +49,19 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+
   background:
-    radial-gradient(1200px 800px at 15% 15%, rgba(124, 92, 255, 0.22), transparent 55%),
-    radial-gradient(900px 700px at 85% 20%, rgba(39, 229, 255, 0.1), transparent 50%), var(--bg);
+    radial-gradient(1200px 900px at 12% 10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%),
+    radial-gradient(900px 720px at 88% 14%, color-mix(in srgb, var(--accent2) 14%, transparent), transparent 52%),
+    radial-gradient(900px 700px at 50% 110%, color-mix(in srgb, var(--danger) 10%, transparent), transparent 62%),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--text) 4%, transparent) 0px,
+      transparent 1px,
+      transparent 5px
+    ),
+    linear-gradient(180deg, var(--bg), var(--bg2));
+
   color: var(--text);
   font-family:
     ui-sans-serif,
@@ -306,12 +344,12 @@ body {
 button:focus-visible {
   outline: none;
   box-shadow: var(--ring);
-  border-color: rgba(124, 92, 255, 0.55);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--stroke));
 }
 
 .oc-field-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--text) 92%, transparent);
   margin-bottom: 6px;
 }
 
@@ -340,8 +378,28 @@ button.primary:hover:not(:disabled) {
 }
 
 button.primary {
-  border-color: rgba(124, 92, 255, 0.45);
-  background: linear-gradient(135deg, rgba(124, 92, 255, 0.75), rgba(39, 229, 255, 0.18));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--stroke));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 78%, transparent), color-mix(in srgb, var(--accent2) 18%, transparent));
+}
+
+button.danger {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--stroke));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--danger) 70%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
+}
+
+.oc-chip {
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: color-mix(in srgb, var(--panel2) 55%, transparent);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.oc-chip:hover:not(:disabled) {
+  border-color: var(--stroke2);
 }
 
 button:disabled {

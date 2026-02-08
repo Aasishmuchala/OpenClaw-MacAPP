@@ -58,8 +58,18 @@ export default function App() {
   const [launchOnLogin, setLaunchOnLogin] = useState<boolean | null>(null);
   const [section, setSection] = useState<SectionKey>("chats");
 
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const v = localStorage.getItem("oc_theme");
+    return v === "light" ? "light" : "dark";
+  });
+
   const [banner, setBanner] = useState<{ title: string; message?: string } | null>(null);
   const toasts = useToasts();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("oc_theme", theme);
+  }, [theme]);
 
 
   const [modal, setModal] = useState<
@@ -360,7 +370,7 @@ export default function App() {
     }
   }
 
-  async function updateChatSettings(chatId: string, opts: { thinking?: string | null; agentId?: string | null }) {
+  async function updateChatSettings(chatId: string, opts: { thinking?: string | null; agentId?: string | null; worker?: string | null }) {
     if (!active) return;
     setBusy("Saving chat settings…");
     try {
@@ -402,6 +412,16 @@ export default function App() {
 
   const topbarRight = (
     <>
+      <button
+        type="button"
+        className="oc-chip"
+        disabled={!!busy}
+        onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        title="Toggle theme"
+      >
+        {theme === "dark" ? "Dark" : "Light"}
+      </button>
+
       <div className="oc-toggle">
         <label>
           <input
