@@ -49,6 +49,7 @@ pub fn run() {
             chats::chats_rename,
             chats::chats_delete,
             chats::chat_thread,
+            chats::chat_reset,
             chats::chat_send,
             chats::chat_send_stream,
             chats::chats_update,

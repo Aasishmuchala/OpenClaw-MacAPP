@@ -8,7 +8,8 @@ export function ChatsPanel(props: {
   draft: string;
   busy: boolean;
   onRefreshThread: () => Promise<void>;
-  onUpdateChatSettings: (chatId: string, opts: { thinking?: string | null; agentId?: string | null }) => Promise<void>;
+  onResetThread: () => Promise<void>;
+  onUpdateChatSettings: (chatId: string, opts: { thinking?: string | null; agentId?: string | null; worker?: string | null }) => Promise<void>;
   onDraftChange: (v: string) => void;
   onSend: () => Promise<void>;
 }) {
@@ -22,46 +23,27 @@ export function ChatsPanel(props: {
           <div className="oc-thread-header">
             <div>
               <div className="oc-thread-title">{activeChat?.title ?? "Select a chat"}</div>
-              <div className="oc-thread-sub">Native UI → OpenClaw CLI (agent turns via gateway)</div>
+              <div className="oc-thread-sub">Ollama (streaming) + local tools (exec/web_get)</div>
 
               {props.activeChatId ? (
                 <div className="oc-thread-controls">
-                  <label className="sr-only" htmlFor="thinking">
-                    Thinking
+                  <label className="sr-only" htmlFor="worker">
+                    Worker
                   </label>
                   <select
-                    id="thinking"
-                    name="thinking"
+                    id="worker"
+                    name="worker"
                     className="oc-select"
-                    value={activeChat?.thinking ?? "low"}
+                    value={activeChat?.worker ?? "default"}
                     disabled={props.busy}
-                    onChange={(e) =>
-                      props.onUpdateChatSettings(props.activeChatId!, { thinking: e.currentTarget.value })
-                    }
+                    onChange={(e) => props.onUpdateChatSettings(props.activeChatId!, { worker: e.currentTarget.value })}
                   >
-                    {["off", "minimal", "low", "medium", "high"].map((t) => (
-                      <option key={t} value={t}>
-                        thinking: {t}
+                    {["default", "build", "ops"].map((w) => (
+                      <option key={w} value={w}>
+                        worker: {w}
                       </option>
                     ))}
                   </select>
-
-                  <label className="sr-only" htmlFor="agent-id">
-                    Agent ID (optional)
-                  </label>
-                  <input
-                    id="agent-id"
-                    name="agent-id"
-                    className="oc-input"
-                    style={{ height: 34, padding: "6px 10px" }}
-                    placeholder="agent id (optional)"
-                    defaultValue={activeChat?.agent_id ?? ""}
-                    disabled={props.busy}
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    onBlur={(e) => props.onUpdateChatSettings(props.activeChatId!, { agentId: e.currentTarget.value })}
-                  />
                 </div>
               ) : null}
             </div>
@@ -73,6 +55,13 @@ export function ChatsPanel(props: {
                 disabled={!props.activeChatId || props.busy}
               >
                 Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => props.onResetThread()}
+                disabled={!props.activeChatId || props.busy}
+              >
+                Reset
               </button>
             </div>
           </div>

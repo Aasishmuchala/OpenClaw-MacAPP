@@ -34,6 +34,7 @@ import {
   chatsList,
   chatsRename,
   chatsUpdate,
+  chatReset,
   chatSendStream,
   chatThread,
   type Chat,
@@ -778,6 +779,16 @@ export default function App() {
                   if (!active || !activeChatId) return;
                   const t = await chatThread(active.id, activeChatId);
                   setThread(t);
+                }}
+                onResetThread={async () => {
+                  if (!active || !activeChatId) return;
+                  setBusy("Resetting chat…");
+                  try {
+                    const t = await chatReset(active.id, activeChatId);
+                    setThread(t);
+                  } finally {
+                    setBusy(null);
+                  }
                 }}
                 onUpdateChatSettings={updateChatSettings}
                 onDraftChange={setDraft}

@@ -1,4 +1,6 @@
-use std::{fs, path::PathBuf, thread, time::{Duration, Instant}};
+use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+
+use once_cell::sync::Lazy;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -42,6 +44,7 @@ pub struct Chat {
   pub updated_at_ms: i64,
   pub agent_id: Option<String>,
   pub thinking: Option<String>,
+  pub worker: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +124,23 @@ fn new_id(prefix: &str) -> String {
   format!("{prefix}_{}", now_ms())
 }
 
+static INFLIGHT: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+static WORKER_LOCKS: Lazy<Mutex<HashMap<String, Arc<Mutex<()>>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn worker_key(profile_id: &str, worker: &str) -> String {
+  format!("{profile_id}::{worker}")
+}
+
+fn get_worker_lock(profile_id: &str, worker: &str) -> Arc<Mutex<()>> {
+  let key = worker_key(profile_id, worker);
+  let mut map = WORKER_LOCKS.lock().unwrap();
+  map.entry(key).or_insert_with(|| Arc::new(Mutex::new(()))).clone()
+}
+
+fn inflight_key(profile_id: &str, chat_id: &str) -> String {
+  format!("{profile_id}::{chat_id}")
+}
+
 #[tauri::command]
 pub fn chats_list(app: AppHandle, profile_id: String) -> Result<ChatIndex, String> {
   load_index(&app, &profile_id).map_err(|e| e.to_string())
@@ -129,6 +149,20 @@ pub fn chats_list(app: AppHandle, profile_id: String) -> Result<ChatIndex, Strin
 #[tauri::command]
 pub fn chat_thread(app: AppHandle, profile_id: String, chat_id: String) -> Result<ChatThread, String> {
   load_thread(&app, &profile_id, &chat_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn chat_reset(app: AppHandle, profile_id: String, chat_id: String) -> Result<ChatThread, String> {
+  // Clears thread messages and any inflight state.
+  let mut t = ChatThread::new(chat_id.clone());
+  save_thread(&app, &profile_id, &t).map_err(|e| e.to_string())?;
+
+  let key = inflight_key(&profile_id, &chat_id);
+  if let Ok(mut s) = INFLIGHT.lock() {
+    s.remove(&key);
+  }
+
+  Ok(t)
 }
 
 #[tauri::command]
@@ -147,6 +181,7 @@ pub fn chats_create(app: AppHandle, profile_id: String, title: Option<String>) -
     updated_at_ms: now_ms(),
     agent_id: None,
     thinking: Some("low".to_string()),
+    worker: Some("default".to_string()),
   };
 
   idx.chats.insert(0, chat.clone());
@@ -177,7 +212,7 @@ pub fn chats_rename(app: AppHandle, profile_id: String, chat_id: String, title: 
 }
 
 #[tauri::command]
-pub fn chats_update(app: AppHandle, profile_id: String, chat_id: String, thinking: Option<String>, agent_id: Option<String>) -> Result<ChatIndex, String> {
+pub fn chats_update(app: AppHandle, profile_id: String, chat_id: String, thinking: Option<String>, agent_id: Option<String>, worker: Option<String>) -> Result<ChatIndex, String> {
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
   let c = idx
     .chats
@@ -192,6 +227,11 @@ pub fn chats_update(app: AppHandle, profile_id: String, chat_id: String, thinkin
 
   c.agent_id = agent_id.and_then(|a| {
     let x = a.trim().to_string();
+    if x.is_empty() { None } else { Some(x) }
+  });
+
+  c.worker = worker.and_then(|w| {
+    let x = w.trim().to_string();
     if x.is_empty() { None } else { Some(x) }
   });
 
@@ -641,10 +681,21 @@ pub struct ChatSendResult {
 pub struct ChatSendStreamResult {
   pub thread: ChatThread,
   pub assistant_message_id: String,
+  pub worker: String,
 }
 
 #[tauri::command]
 pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: String) -> Result<ChatSendResult, String> {
+  // Prevent concurrent sends per chat.
+  {
+    let key = inflight_key(&profile_id, &chat_id);
+    let mut s = INFLIGHT.lock().map_err(|_| "inflight lock poisoned".to_string())?;
+    if s.contains(&key) {
+      return Err("chat is busy (inflight)".to_string());
+    }
+    s.insert(key);
+  }
+
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
   let pos = idx
     .chats
@@ -682,6 +733,13 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
       };
       thread.messages.push(msg_ai);
       save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
+
+      // Clear inflight
+      let key = inflight_key(&profile_id, &chat_id);
+      if let Ok(mut s) = INFLIGHT.lock() {
+        s.remove(&key);
+      }
+
       return Ok(ChatSendResult { thread });
     }
   };
@@ -698,17 +756,35 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
   save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
 
+  // Clear inflight
+  let key = inflight_key(&profile_id, &chat_id);
+  if let Ok(mut s) = INFLIGHT.lock() {
+    s.remove(&key);
+  }
+
   Ok(ChatSendResult { thread })
 }
 
 #[tauri::command]
 pub fn chat_send_stream(app: AppHandle, profile_id: String, chat_id: String, text: String) -> Result<ChatSendStreamResult, String> {
+  // Prevent concurrent sends per chat.
+  {
+    let key = inflight_key(&profile_id, &chat_id);
+    let mut s = INFLIGHT.lock().map_err(|_| "inflight lock poisoned".to_string())?;
+    if s.contains(&key) {
+      return Err("chat is busy (inflight)".to_string());
+    }
+    s.insert(key);
+  }
+
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
   let pos = idx
     .chats
     .iter()
     .position(|c| c.id == chat_id)
     .ok_or_else(|| "chat not found".to_string())?;
+
+  let worker = idx.chats[pos].worker.clone().unwrap_or_else(|| "default".to_string());
 
   let chat_id2 = idx.chats[pos].id.clone();
 
@@ -742,8 +818,13 @@ pub fn chat_send_stream(app: AppHandle, profile_id: String, chat_id: String, tex
   let profile_id2 = profile_id.clone();
   let chat_id3 = chat_id2.clone();
   let assistant_id2 = assistant_message_id.clone();
+  let worker2 = worker.clone();
 
   std::thread::spawn(move || {
+    // Serialize work per worker.
+    let lock = get_worker_lock(&profile_id2, &worker2);
+    let _guard = lock.lock().ok();
+
     let res = stream_ollama_into_thread(&app2, &profile_id2, &chat_id3, &assistant_id2);
     if let Err(e) = res {
       let _ = app2.emit(
@@ -760,7 +841,13 @@ pub fn chat_send_stream(app: AppHandle, profile_id: String, chat_id: String, tex
         },
       );
     }
+
+    // Clear inflight
+    let key = inflight_key(&profile_id2, &chat_id3);
+    if let Ok(mut s) = INFLIGHT.lock() {
+      s.remove(&key);
+    }
   });
 
-  Ok(ChatSendStreamResult { thread, assistant_message_id })
+  Ok(ChatSendStreamResult { thread, assistant_message_id, worker })
 }

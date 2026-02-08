@@ -132,6 +132,7 @@ export type Chat = {
   updated_at_ms: number;
   agent_id: string | null;
   thinking: string | null;
+  worker?: string | null;
 };
 
 export type ChatIndex = {
@@ -169,13 +170,14 @@ export async function chatsRename(profileId: string, chatId: string, title: stri
 export async function chatsUpdate(
   profileId: string,
   chatId: string,
-  opts: { thinking?: string | null; agentId?: string | null },
+  opts: { thinking?: string | null; agentId?: string | null; worker?: string | null },
 ): Promise<ChatIndex> {
   return invoke("chats_update", {
     profileId,
     chatId,
     thinking: opts.thinking ?? null,
     agentId: opts.agentId ?? null,
+    worker: opts.worker ?? null,
   });
 }
 
@@ -187,6 +189,10 @@ export async function chatThread(profileId: string, chatId: string): Promise<Cha
   return invoke("chat_thread", { profileId, chatId });
 }
 
+export async function chatReset(profileId: string, chatId: string): Promise<ChatThread> {
+  return invoke("chat_reset", { profileId, chatId });
+}
+
 export async function chatSend(profileId: string, chatId: string, text: string): Promise<{ thread: ChatThread }> {
   return invoke("chat_send", { profileId, chatId, text });
 }
@@ -194,6 +200,7 @@ export async function chatSend(profileId: string, chatId: string, text: string):
 export type ChatSendStreamResult = {
   thread: ChatThread;
   assistant_message_id: string;
+  worker: string;
 };
 
 export async function chatSendStream(
