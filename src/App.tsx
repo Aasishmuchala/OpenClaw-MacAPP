@@ -27,7 +27,6 @@ import {
   profilesRename,
   profilesSetActive,
   secretDelete,
-  secretGet,
   secretSet,
   chatsCreate,
   chatsDelete,
@@ -332,26 +331,7 @@ export default function App() {
     setModal({ kind: "delete_profile", profileId });
   }
 
-  async function demoSecretWrite() {
-    if (!active) return;
-    setModal({ kind: "secret_set", value: "" });
-  }
-
-  async function demoSecretRead() {
-    if (!active) return;
-    setBusy("Reading secret…");
-    try {
-      const v = await secretGet(active.id, "demo.secret");
-      setModal({ kind: "secret_show", value: v });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function demoSecretDelete() {
-    if (!active) return;
-    setModal({ kind: "secret_delete" });
-  }
+  // Demo secret helpers intentionally removed from primary UI chrome.
 
   async function createChat(title?: string) {
     if (!active) return;
@@ -418,8 +398,9 @@ export default function App() {
         disabled={!!busy}
         onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
         title="Toggle theme"
+        aria-label="Toggle theme"
       >
-        {theme === "dark" ? "Dark" : "Light"}
+        {theme === "dark" ? "☾" : "☼"}
       </button>
 
       <div className="oc-toggle">
@@ -443,15 +424,7 @@ export default function App() {
         </label>
       </div>
 
-      <button className="primary" type="button" onClick={demoSecretWrite} disabled={!active || !!busy}>
-        Set demo secret
-      </button>
-      <button type="button" onClick={demoSecretRead} disabled={!active || !!busy}>
-        Read
-      </button>
-      <button type="button" onClick={demoSecretDelete} disabled={!active || !!busy}>
-        Delete
-      </button>
+      {/* Demo secret actions moved out of the primary chrome (Settings → Debug later) */}
     </>
   );
 

@@ -63,17 +63,8 @@ body {
   padding: 0;
   height: 100%;
 
-  background:
-    radial-gradient(1200px 900px at 12% 10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 55%),
-    radial-gradient(900px 720px at 88% 14%, color-mix(in srgb, var(--accent2) 14%, transparent), transparent 52%),
-    radial-gradient(900px 700px at 50% 110%, color-mix(in srgb, var(--danger) 10%, transparent), transparent 62%),
-    repeating-linear-gradient(
-      0deg,
-      color-mix(in srgb, var(--text) 4%, transparent) 0px,
-      transparent 1px,
-      transparent 5px
-    ),
-    linear-gradient(180deg, var(--bg), var(--bg2));
+  /* Swiss minimal: near-flat background, no decorative pattern */
+  background: linear-gradient(180deg, var(--bg), var(--bg2));
 
   color: var(--text);
   font-family:
@@ -248,9 +239,7 @@ body {
   position: relative;
   padding: 18px;
   border-right: 1px solid var(--stroke);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--panel2) 70%, transparent), color-mix(in srgb, var(--panel) 55%, transparent));
-  backdrop-filter: blur(18px);
+  background: var(--panel2);
   overflow: auto;
 }
 
@@ -262,15 +251,19 @@ body {
 
 .oc-nav-item {
   text-align: left;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.oc-nav-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .oc-nav-item.active {
-  border-color: rgba(124, 92, 255, 0.45);
-  background: linear-gradient(135deg, rgba(124, 92, 255, 0.22), rgba(39, 229, 255, 0.08));
+  border-color: var(--stroke);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .oc-nav-label {
@@ -292,16 +285,14 @@ body {
   padding: 12px;
   border: 1px solid var(--stroke);
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
-  box-shadow: var(--shadow);
+  background: var(--panel);
 }
 
 .oc-dot {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  box-shadow: 0 0 22px rgba(124, 92, 255, 0.45);
+  background: var(--accent);
 }
 
 .oc-title {
@@ -649,8 +640,7 @@ button:disabled {
   border: 1px solid var(--stroke);
   border-radius: 16px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--panel2) 70%, transparent);
-  box-shadow: var(--shadow);
+  background: var(--panel2);
 }
 
 .oc-thread-header {
