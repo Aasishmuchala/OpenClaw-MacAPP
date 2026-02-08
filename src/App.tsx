@@ -3,6 +3,7 @@ import "./App.css";
 import { ChatList, ChatThreadView } from "./AppChat";
 import { SettingsPanel } from "./SettingsPanel";
 import { autostartGet, autostartSet } from "./lib/autostart";
+import { onTrayNewChat, onTrayRestartGateway } from "./lib/tray-events";
 import {
   gatewayLogs,
   gatewayRestart,
@@ -89,6 +90,28 @@ export default function App() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let un1: (() => void) | null = null;
+    let un2: (() => void) | null = null;
+
+    (async () => {
+      const l1 = await onTrayNewChat(() => {
+        void createChat();
+      });
+      const l2 = await onTrayRestartGateway(() => {
+        void gwRestart();
+      });
+      un1 = () => l1();
+      un2 = () => l2();
+    })();
+
+    return () => {
+      un1?.();
+      un2?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.id]);
 
   useEffect(() => {
     (async () => {

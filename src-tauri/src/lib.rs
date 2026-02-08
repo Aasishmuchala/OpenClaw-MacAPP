@@ -3,6 +3,7 @@ mod gateway;
 mod profiles;
 mod settings;
 mod state;
+mod tray;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +13,10 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .setup(|app| {
+            tray::init_tray(&app.handle())?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             profiles::profiles_list,
             profiles::profiles_create,
