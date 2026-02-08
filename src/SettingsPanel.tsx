@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   settingsGet,
+  settingsSetAutoDoMode,
   settingsSetDevFullExecAuto,
   settingsSetOllamaBaseUrl,
   settingsSetOllamaModel,
@@ -19,6 +20,7 @@ export function SettingsPanel(props: {
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState<string>("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState<string>("ollama/huihui_ai/qwen3-abliterated:8b");
   const [devFullExecAuto, setDevFullExecAuto] = useState<boolean>(false);
+  const [autoDoMode, setAutoDoMode] = useState<boolean>(false);
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [unlockPhrase, setUnlockPhrase] = useState<string>("");
 
@@ -32,6 +34,7 @@ export function SettingsPanel(props: {
         setOllamaBaseUrl(ss.ollama_base_url ?? "http://localhost:11434");
         setOllamaModel(ss.ollama_model ?? "ollama/huihui_ai/qwen3-abliterated:8b");
         setDevFullExecAuto(Boolean(ss.dev_full_exec_auto));
+        setAutoDoMode(Boolean(ss.auto_do_mode));
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         props.onToast?.({ kind: "error", title: "Failed to load settings", message: msg });
@@ -83,6 +86,23 @@ export function SettingsPanel(props: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       props.onToast?.({ kind: "error", title: "Failed to update Developer Mode", message: msg });
+    } finally {
+      props.onBusy(null);
+    }
+  }
+
+  async function saveAutoDoMode(enabled: boolean) {
+    props.onBusy("Saving Auto-Do Mode…");
+    try {
+      const ss = await settingsSetAutoDoMode(props.profileId, enabled);
+      setS(ss);
+      props.onToast?.({
+        kind: enabled ? "success" : "info",
+        title: enabled ? "Auto-Do Mode enabled" : "Auto-Do Mode disabled",
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      props.onToast?.({ kind: "error", title: "Failed to update Auto-Do Mode", message: msg });
     } finally {
       props.onBusy(null);
     }
@@ -220,6 +240,28 @@ export function SettingsPanel(props: {
               </button>
             </div>
           )}
+
+          {unlocked ? (
+            <div className="oc-field" style={{ marginTop: 14 }}>
+              <div className="oc-field-label">Auto-Do Mode</div>
+              <div className="oc-field-help">
+                When enabled, action-style prompts ("do it", "fix", "install", "get it done") will default to running tools.
+              </div>
+              <div className="oc-row" style={{ marginTop: 10 }}>
+                <button
+                  className={autoDoMode ? "danger" : "primary"}
+                  disabled={props.busy}
+                  onClick={async () => {
+                    const next = !autoDoMode;
+                    setAutoDoMode(next);
+                    await saveAutoDoMode(next);
+                  }}
+                >
+                  {autoDoMode ? "Disable Auto-Do Mode" : "Enable Auto-Do Mode"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
         </div>
       </div>

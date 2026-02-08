@@ -62,6 +62,7 @@ export type ProfileSettings = {
   ollama_base_url?: string | null;
   ollama_model?: string | null;
   dev_full_exec_auto?: boolean | null;
+  auto_do_mode?: boolean | null;
 };
 
 export async function settingsGet(profileId: string): Promise<ProfileSettings> {
@@ -94,6 +95,13 @@ export async function settingsSetDevFullExecAuto(
   enabled: boolean,
 ): Promise<ProfileSettings> {
   return invoke("settings_set_dev_full_exec_auto", { profileId, enabled });
+}
+
+export async function settingsSetAutoDoMode(
+  profileId: string,
+  enabled: boolean,
+): Promise<ProfileSettings> {
+  return invoke("settings_set_auto_do_mode", { profileId, enabled });
 }
 
 export async function gatewayStatus(profileId: string): Promise<GatewayStatus> {

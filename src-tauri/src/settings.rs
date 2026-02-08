@@ -27,6 +27,9 @@ pub struct ProfileSettings {
 
   // Dangerous: allows unrestricted exec with no prompts.
   pub dev_full_exec_auto: Option<bool>,
+
+  // When enabled, actiony user requests default to tool execution.
+  pub auto_do_mode: Option<bool>,
 }
 
 pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSettings> {
@@ -39,6 +42,7 @@ pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSetting
       ollama_base_url: Some("http://localhost:11434".to_string()),
       ollama_model: Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string()),
       dev_full_exec_auto: Some(false),
+      auto_do_mode: Some(false),
     });
   }
   let raw = fs::read_to_string(&path).context("failed to read settings.json")?;
@@ -58,6 +62,9 @@ pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSetting
   }
   if s.dev_full_exec_auto.is_none() {
     s.dev_full_exec_auto = Some(false);
+  }
+  if s.auto_do_mode.is_none() {
+    s.auto_do_mode = Some(false);
   }
   Ok(s)
 }
@@ -147,9 +154,10 @@ pub fn settings_set_openclaw_path(app: AppHandle, profile_id: String, openclaw_p
     version: 1,
     openclaw_path: None,
     openclaw_profile: None,
-    ollama_base_url: Some("http://127.0.0.1:11434".to_string()),
+    ollama_base_url: Some("http://localhost:11434".to_string()),
     ollama_model: Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string()),
     dev_full_exec_auto: Some(false),
+    auto_do_mode: Some(false),
   });
   s.version = 1;
   s.openclaw_path = openclaw_path.and_then(|x| {
@@ -186,6 +194,14 @@ pub fn settings_set_ollama_model(app: AppHandle, profile_id: String, ollama_mode
 pub fn settings_set_dev_full_exec_auto(app: AppHandle, profile_id: String, enabled: bool) -> Result<ProfileSettings, String> {
   let mut s = load_settings(&app, &profile_id).map_err(|e| e.to_string())?;
   s.dev_full_exec_auto = Some(enabled);
+  save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
+  Ok(s)
+}
+
+#[tauri::command]
+pub fn settings_set_auto_do_mode(app: AppHandle, profile_id: String, enabled: bool) -> Result<ProfileSettings, String> {
+  let mut s = load_settings(&app, &profile_id).map_err(|e| e.to_string())?;
+  s.auto_do_mode = Some(enabled);
   save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
   Ok(s)
 }

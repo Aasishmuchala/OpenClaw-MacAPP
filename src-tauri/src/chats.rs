@@ -293,11 +293,16 @@ fn strip_ollama_prefix(model_id: &str) -> String {
   model_id.strip_prefix("ollama/").unwrap_or(model_id).to_string()
 }
 
-fn system_prompt(dev_full_exec_auto: bool) -> String {
+fn system_prompt(dev_full_exec_auto: bool, auto_do_mode: bool) -> String {
   let mut s = String::new();
   s.push_str("You are OpenClaw Desktop running locally. You can call tools when needed.\n\n");
+  if auto_do_mode {
+    s.push_str("AUTO-DO MODE: Enabled. For action requests, you MUST use tools (exec/web_get) rather than giving plans.\n");
+    s.push_str("If you claim you did something, it must be backed by tool output.\n\n");
+  }
+
   s.push_str("TOOL CALLS:\n");
-  s.push_str("If (and only if) you need tools, respond with a single JSON object matching one of these shapes, with no extra text:\n");
+  s.push_str("When responding, you may return a single JSON object matching one of these shapes (no extra text):\n");
   s.push_str("- {\"tool\":\"web_get\",\"url\":\"https://example.com\"}\n");
   s.push_str("- {\"tool\":\"exec\",\"cmd\":\"<shell command>\"}\n");
   s.push_str("- {\"tool\":\"final\",\"text\":\"<final answer>\"}\n\n");
@@ -309,8 +314,17 @@ fn system_prompt(dev_full_exec_auto: bool) -> String {
   s
 }
 
-fn base_msgs_for_thread(dev_full_exec_auto: bool, thread: &ChatThread, take_last: usize) -> Vec<OllamaMessage> {
-  let mut msgs: Vec<OllamaMessage> = vec![OllamaMessage { role: OllamaRole::System, content: system_prompt(dev_full_exec_auto) }];
+fn is_action_request(s: &str) -> bool {
+  let t = s.to_lowercase();
+  let kws = ["do it", "get it done", "fix", "install", "set up", "setup", "run", "execute", "create", "delete", "remove", "update", "build", "deploy"];
+  kws.iter().any(|k| t.contains(k))
+}
+
+fn base_msgs_for_thread(dev_full_exec_auto: bool, auto_do_mode: bool, thread: &ChatThread, take_last: usize) -> Vec<OllamaMessage> {
+  let mut msgs: Vec<OllamaMessage> = vec![OllamaMessage {
+    role: OllamaRole::System,
+    content: system_prompt(dev_full_exec_auto, auto_do_mode),
+  }];
 
   for m in thread.messages.iter().rev().take(take_last).rev() {
     let role = match m.role {
@@ -319,6 +333,18 @@ fn base_msgs_for_thread(dev_full_exec_auto: bool, thread: &ChatThread, take_last
       ChatRole::Tool => OllamaRole::User,
     };
     msgs.push(OllamaMessage { role, content: m.text.clone() });
+  }
+
+  if auto_do_mode {
+    // If the last user message looks like an action request, force tool-mode.
+    if let Some(last_user) = thread.messages.iter().rev().find(|m| matches!(m.role, ChatRole::User)) {
+      if is_action_request(&last_user.text) {
+        msgs.push(OllamaMessage {
+          role: OllamaRole::User,
+          content: "AUTO-DO: This is an action request. Reply with a single tool JSON (exec/web_get) to actually do the work. Do not answer with a plan.".to_string(),
+        });
+      }
+    }
   }
 
   msgs
@@ -334,9 +360,10 @@ fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread)
     .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
   let model = strip_ollama_prefix(&model_id);
   let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
+  let auto_do_mode = settings.auto_do_mode.unwrap_or(false);
 
   // Keep last N messages.
-  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, thread, 16);
+  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, auto_do_mode, thread, 16);
 
   // Tool loop
   for _step in 0..6 {
@@ -392,9 +419,10 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
     .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
   let model = strip_ollama_prefix(&model_id);
   let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
+  let auto_do_mode = settings.auto_do_mode.unwrap_or(false);
 
   let thread0 = load_thread(app, profile_id, chat_id).context("load thread")?;
-  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, &thread0, 16);
+  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, auto_do_mode, &thread0, 16);
 
   let mut accumulated = String::new();
   let mut last_persist = Instant::now();

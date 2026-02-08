@@ -38,6 +38,7 @@ pub fn run() {
             settings::settings_set_ollama_base_url,
             settings::settings_set_ollama_model,
             settings::settings_set_dev_full_exec_auto,
+            settings::settings_set_auto_do_mode,
             gateway::gateway_status,
             gateway::gateway_start,
             gateway::gateway_stop,
