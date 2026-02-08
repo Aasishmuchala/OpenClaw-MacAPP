@@ -79,11 +79,25 @@ export function ProfileSidebar(props: {
                   </div>
                 </button>
                 <div className="oc-profile-actions">
-                  <button type="button" onClick={() => props.onRename(p.id)} disabled={props.busy}>
-                    Rename
+                  <button
+                    type="button"
+                    className="oc-icon"
+                    aria-label="Profile actions"
+                    title="Actions"
+                    disabled={props.busy}
+                    onClick={() => props.onRename(p.id)}
+                  >
+                    ⋯
                   </button>
-                  <button type="button" onClick={() => props.onDelete(p.id)} disabled={props.busy || !canDelete}>
-                    Delete
+                  <button
+                    type="button"
+                    className="oc-icon"
+                    aria-label="Delete profile"
+                    title="Delete"
+                    disabled={props.busy || !canDelete}
+                    onClick={() => props.onDelete(p.id)}
+                  >
+                    ⌫
                   </button>
                 </div>
               </div>

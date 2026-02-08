@@ -54,11 +54,23 @@ export function ChatList(props: {
                 <div className="oc-chat-sub">{fmtTime(c.updated_at_ms)}</div>
               </button>
               <div className="oc-chat-actions">
-                <button disabled={props.busy} onClick={() => props.onRename(c.id)}>
-                  Rename
+                <button
+                  className="oc-icon"
+                  disabled={props.busy}
+                  title="Rename"
+                  aria-label="Rename chat"
+                  onClick={() => props.onRename(c.id)}
+                >
+                  ⋯
                 </button>
-                <button disabled={props.busy} onClick={() => props.onDelete(c.id)}>
-                  Delete
+                <button
+                  className="oc-icon"
+                  disabled={props.busy}
+                  title="Delete"
+                  aria-label="Delete chat"
+                  onClick={() => props.onDelete(c.id)}
+                >
+                  ⌫
                 </button>
               </div>
             </div>
