@@ -216,6 +216,16 @@ struct AgentJsonResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct AgentsListJson {
+  agents: Vec<AgentListItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AgentListItem {
+  id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct AgentJsonPayload {
   payloads: Vec<AgentPayload>,
 }
@@ -223,6 +233,56 @@ struct AgentJsonPayload {
 #[derive(Debug, Serialize, Deserialize)]
 struct AgentPayload {
   text: Option<String>,
+}
+
+fn ensure_desktop_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, agent_id: &str, model_id: &str) -> Result<()> {
+  // Create tiny workspace (so embedded runs don't inject the huge /Users/.../clawd workspace)
+  let ws = crate::desktop_agent::ensure_minimal_workspace(app, &openclaw_profile.replace("ocd-", "p_"))
+    .or_else(|_| crate::desktop_agent::ensure_minimal_workspace(app, agent_id))
+    .unwrap_or_else(|_| {
+      // fallback to app data dir without failing hard
+      app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir()).join("workspace")
+    });
+
+  let list_args: Vec<String> = vec![
+    "--profile".into(),
+    openclaw_profile.to_string(),
+    "agents".into(),
+    "list".into(),
+    "--json".into(),
+  ];
+
+  let out = crate::openclaw_exec::run_openclaw(app, bin.clone(), list_args).context("agents list")?;
+  if out.status.success() {
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    if let Ok(parsed) = serde_json::from_str::<AgentsListJson>(&stdout) {
+      if parsed.agents.iter().any(|a| a.id == agent_id) {
+        return Ok(());
+      }
+    }
+  }
+
+  // Add agent non-interactively.
+  let add_args: Vec<String> = vec![
+    "--profile".into(),
+    openclaw_profile.to_string(),
+    "agents".into(),
+    "add".into(),
+    "--non-interactive".into(),
+    "--workspace".into(),
+    ws.to_string_lossy().to_string(),
+    "--model".into(),
+    model_id.to_string(),
+    agent_id.to_string(),
+  ];
+
+  let out2 = crate::openclaw_exec::run_openclaw(app, bin, add_args).context("agents add")?;
+  if !out2.status.success() {
+    let stderr = String::from_utf8_lossy(&out2.stderr).to_string();
+    return Err(anyhow::anyhow!(stderr));
+  }
+
+  Ok(())
 }
 
 fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
@@ -245,14 +305,19 @@ fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: 
     args.push(t.into());
   }
 
-  if let Some(a) = agent_id {
-    args.push("--agent".into());
-    args.push(a.into());
-  }
+  // If no explicit agent provided, use a deterministic per-profile desktop agent.
+  let chosen_agent = agent_id.map(|x| x.to_string()).unwrap_or_else(|| crate::desktop_agent::default_agent_id(openclaw_profile));
+
+  args.push("--agent".into());
+  args.push(chosen_agent.clone());
 
   // Prefix with OpenClaw profile so our app profiles stay isolated.
   let mut full_args: Vec<String> = vec!["--profile".into(), openclaw_profile.to_string()];
   full_args.extend(args);
+
+  // Ensure the selected agent exists (creates a minimal-workspace agent by default).
+  let model_id = "ollama/huihui_ai/qwen3-vl-abliterated:8b";
+  ensure_desktop_agent(app, bin.clone(), openclaw_profile, &chosen_agent, model_id).ok();
 
   let out = crate::openclaw_exec::run_openclaw(app, bin, full_args)
     .context("failed to run openclaw agent")?;

@@ -1,5 +1,6 @@
 mod chats;
 mod gateway;
+mod desktop_agent;
 mod models;
 mod openclaw;
 mod openclaw_exec;
