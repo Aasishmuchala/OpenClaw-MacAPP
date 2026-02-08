@@ -1,7 +1,27 @@
-# Tauri + React + Typescript
+# OpenClaw Mac App (Desktop)
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Local-first macOS desktop app for OpenClaw.
 
-## Recommended IDE Setup
+## Goals (MVP)
+- Runs on login (Launch at Login toggle)
+- Multiple local profiles (isolated chats/config/auth)
+- Multiple chats (session-based)
+- Per-chat model selection (only for configured/allowed models)
+- Embedded Gateway manager (start/stop/restart, status, logs)
+- Permissions dashboard (guided; macOS requires user approval)
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Dev prerequisites
+Tauri requires Rust.
+
+- Install Rust: https://www.rust-lang.org/tools/install
+- macOS prerequisites: https://tauri.app/start/prerequisites/
+
+## Run
+```bash
+npm install
+npm run tauri dev
+```
+
+## Notes
+- This app is intended to be distributed **outside the Mac App Store** (signed + notarized).
+- Secrets should be stored in **Keychain** (no plaintext tokens).
