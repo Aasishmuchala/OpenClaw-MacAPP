@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import "./styles/app.css";
 import { ChatList } from "./AppChat";
 import { SettingsPanel } from "./SettingsPanel";
@@ -33,7 +34,7 @@ import {
   chatsList,
   chatsRename,
   chatsUpdate,
-  chatSend,
+  chatSendStream,
   chatThread,
   type Chat,
   type ChatThread,
@@ -59,6 +60,7 @@ export default function App() {
   const [banner, setBanner] = useState<{ title: string; message?: string } | null>(null);
   const toasts = useToasts();
 
+
   const [modal, setModal] = useState<
     | null
     | { kind: "rename_profile"; profileId: string; value: string }
@@ -76,6 +78,52 @@ export default function App() {
   }, [store]);
 
   const activeProfileId = active?.id ?? null;
+
+
+  useEffect(() => {
+    let unlisten: null | (() => void) = null;
+
+    (async () => {
+      unlisten = await listen<{
+        profile_id: string;
+        chat_id: string;
+        message_id: string;
+        delta: string;
+        done: boolean;
+        error?: string | null;
+      }>("chat_stream", (event) => {
+        const p = event.payload;
+        if (!activeProfileId || p.profile_id !== activeProfileId) return;
+        if (p.chat_id !== activeChatId) return;
+
+        setThread((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, messages: prev.messages.map((m) => ({ ...m })) };
+          const msg = next.messages.find((m) => m.id === p.message_id);
+          if (msg) {
+            msg.text = (msg.text ?? "") + (p.delta ?? "");
+          }
+          return next;
+        });
+
+        if (p.error) {
+          toasts.push({ kind: "error", title: "Stream error", message: String(p.error), timeoutMs: 8000 });
+          setBusy(null);
+        } else if (p.done) {
+          setBusy(null);
+        }
+      });
+    })();
+
+    return () => {
+      try {
+        unlisten?.();
+      } catch {
+        // ignore
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProfileId, activeChatId]);
 
   useEffect(() => {
     (async () => {
@@ -324,19 +372,15 @@ export default function App() {
     setDraft("");
     setBusy("Sending…");
     try {
-      const res = await chatSend(active.id, activeChatId, text);
+      const res = await chatSendStream(active.id, activeChatId, text);
       setThread(res.thread);
+
+      // Note: assistant message will stream in via `chat_stream` events.
       const idx = await chatsList(active.id);
       setChats(idx.chats);
-
-      const last = res.thread.messages[res.thread.messages.length - 1];
-      if (last?.role === "assistant" && last.text.startsWith("[error]")) {
-        toasts.push({ kind: "error", title: "Send failed", message: last.text, timeoutMs: 8000 });
-      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toasts.push({ kind: "error", title: "Send failed", message: msg, timeoutMs: 8000 });
-    } finally {
       setBusy(null);
     }
   }

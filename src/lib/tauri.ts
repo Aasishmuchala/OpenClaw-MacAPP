@@ -182,3 +182,16 @@ export async function chatThread(profileId: string, chatId: string): Promise<Cha
 export async function chatSend(profileId: string, chatId: string, text: string): Promise<{ thread: ChatThread }> {
   return invoke("chat_send", { profileId, chatId, text });
 }
+
+export type ChatSendStreamResult = {
+  thread: ChatThread;
+  assistant_message_id: string;
+};
+
+export async function chatSendStream(
+  profileId: string,
+  chatId: string,
+  text: string,
+): Promise<ChatSendStreamResult> {
+  return invoke("chat_send_stream", { profileId, chatId, text });
+}

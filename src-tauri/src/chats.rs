@@ -1,8 +1,8 @@
-use std::{fs, path::PathBuf, thread, time::Duration};
+use std::{fs, path::PathBuf, thread, time::{Duration, Instant}};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::ollama::{OllamaChatReq, OllamaMessage, OllamaRole};
 use crate::tools::ToolCall;
@@ -308,27 +308,33 @@ fn system_prompt(dev_full_exec_auto: bool) -> String {
   s
 }
 
-fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread) -> Result<String> {
-  let settings = crate::settings::load_settings(app, profile_id).unwrap_or_default();
-  let base_url = settings
-    .ollama_base_url
-    .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
-  let model_id = settings
-    .ollama_model
-    .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
-  let model = strip_ollama_prefix(&model_id);
-  let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
-
-  // Build messages with a small window (fast). We'll keep last 24 messages.
+fn base_msgs_for_thread(dev_full_exec_auto: bool, thread: &ChatThread, take_last: usize) -> Vec<OllamaMessage> {
   let mut msgs: Vec<OllamaMessage> = vec![OllamaMessage { role: OllamaRole::System, content: system_prompt(dev_full_exec_auto) }];
 
-  for m in thread.messages.iter().rev().take(24).rev() {
+  for m in thread.messages.iter().rev().take(take_last).rev() {
     let role = match m.role {
       ChatRole::User => OllamaRole::User,
       ChatRole::Assistant => OllamaRole::Assistant,
     };
     msgs.push(OllamaMessage { role, content: m.text.clone() });
   }
+
+  msgs
+}
+
+fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread) -> Result<String> {
+  let settings = crate::settings::load_settings(app, profile_id).unwrap_or_default();
+  let base_url = settings
+    .ollama_base_url
+    .unwrap_or_else(|| "http://localhost:11434".to_string());
+  let model_id = settings
+    .ollama_model
+    .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
+  let model = strip_ollama_prefix(&model_id);
+  let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
+
+  // Keep last N messages.
+  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, thread, 16);
 
   // Tool loop
   for _step in 0..6 {
@@ -343,42 +349,151 @@ fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread)
 
     let content = resp.message.content;
 
-    // If the model returns a tool call JSON, execute it.
     if let Ok(call) = serde_json::from_str::<ToolCall>(&content) {
       match call {
         ToolCall::Final { text } => return Ok(text),
         ToolCall::WebGet { url } => {
           let out = crate::tools::web_get(&url).unwrap_or_else(|e| format!("[tool_error] {e}"));
           msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
-          msgs.push(OllamaMessage {
-            role: OllamaRole::User,
-            content: format!("Tool result (web_get):\nURL: {url}\n\n{out}"),
-          });
+          msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (web_get):\nURL: {url}\n\n{out}") });
           continue;
         }
         ToolCall::Exec { cmd } => {
           if !dev_full_exec_auto {
             msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
-            msgs.push(OllamaMessage {
-              role: OllamaRole::User,
-              content: "Tool denied: exec is disabled (Developer Mode off). Return a final answer without exec.".to_string(),
-            });
+            msgs.push(OllamaMessage { role: OllamaRole::User, content: "Tool denied: exec is disabled (Developer Mode off). Return a final answer without exec.".to_string() });
             continue;
           }
 
           let out = crate::tools::exec(&cmd).unwrap_or_else(|e| format!("[tool_error] {e}"));
           msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
-          msgs.push(OllamaMessage {
-            role: OllamaRole::User,
-            content: format!("Tool result (exec):\n$ {cmd}\n\n{out}"),
-          });
+          msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (exec):\n$ {cmd}\n\n{out}") });
           continue;
         }
       }
     }
 
-    // Normal assistant text.
     return Ok(content);
+  }
+
+  Err(anyhow::anyhow!("tool loop exceeded"))
+}
+
+fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, assistant_message_id: &str) -> Result<()> {
+  let settings = crate::settings::load_settings(app, profile_id).unwrap_or_default();
+  let base_url = settings
+    .ollama_base_url
+    .unwrap_or_else(|| "http://localhost:11434".to_string());
+  let model_id = settings
+    .ollama_model
+    .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
+  let model = strip_ollama_prefix(&model_id);
+  let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
+
+  let thread0 = load_thread(app, profile_id, chat_id).context("load thread")?;
+  let mut msgs: Vec<OllamaMessage> = base_msgs_for_thread(dev_full_exec_auto, &thread0, 16);
+
+  let mut accumulated = String::new();
+  let mut last_persist = Instant::now();
+
+  // up to N steps (tool loop)
+  for _step in 0..6 {
+    accumulated.clear();
+
+    crate::ollama::chat_stream(
+      &base_url,
+      OllamaChatReq {
+        model: model.clone(),
+        messages: msgs.clone(),
+        stream: true,
+      },
+      |delta, done| {
+        if !delta.is_empty() {
+          accumulated.push_str(&delta);
+
+          let _ = app.emit(
+            "chat_stream",
+            crate::chat_stream::ChatStreamEvent {
+              profile_id: profile_id.to_string(),
+              chat_id: chat_id.to_string(),
+              message_id: assistant_message_id.to_string(),
+              delta: delta.clone(),
+              done: false,
+              error: None,
+            },
+          );
+
+          if last_persist.elapsed() > Duration::from_millis(250) {
+            let mut t = load_thread(app, profile_id, chat_id).context("reload thread")?;
+            if let Some(m) = t.messages.iter_mut().find(|m| m.id == assistant_message_id) {
+              m.text.push_str(&delta);
+            }
+            save_thread(app, profile_id, &t).ok();
+            last_persist = Instant::now();
+          }
+        }
+
+        if done {
+          let _ = app.emit(
+            "chat_stream",
+            crate::chat_stream::ChatStreamEvent {
+              profile_id: profile_id.to_string(),
+              chat_id: chat_id.to_string(),
+              message_id: assistant_message_id.to_string(),
+              delta: "".to_string(),
+              done: true,
+              error: None,
+            },
+          );
+        }
+
+        Ok(())
+      },
+    )?;
+
+    // Final persist
+    let mut t = load_thread(app, profile_id, chat_id).context("reload thread")?;
+    if let Some(m) = t.messages.iter_mut().find(|m| m.id == assistant_message_id) {
+      // In case we throttled persists, ensure full content is present.
+      if !accumulated.is_empty() {
+        m.text = accumulated.clone();
+      }
+    }
+    save_thread(app, profile_id, &t).ok();
+
+    // Tool handling
+    if let Ok(call) = serde_json::from_str::<ToolCall>(&accumulated) {
+      match call {
+        ToolCall::Final { text } => {
+          let mut t2 = load_thread(app, profile_id, chat_id).context("reload thread")?;
+          if let Some(m) = t2.messages.iter_mut().find(|m| m.id == assistant_message_id) {
+            m.text = text;
+          }
+          save_thread(app, profile_id, &t2).ok();
+          return Ok(());
+        }
+        ToolCall::WebGet { url } => {
+          let out = crate::tools::web_get(&url).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
+          msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (web_get):\nURL: {url}\n\n{out}") });
+          continue;
+        }
+        ToolCall::Exec { cmd } => {
+          if !dev_full_exec_auto {
+            msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
+            msgs.push(OllamaMessage { role: OllamaRole::User, content: "Tool denied: exec is disabled (Developer Mode off). Return a final answer without exec.".to_string() });
+            continue;
+          }
+          let out = crate::tools::exec(&cmd).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
+          msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (exec):\n$ {cmd}\n\n{out}") });
+          continue;
+        }
+      }
+    }
+
+    // Not a tool call => final content already streamed.
+    return Ok(());
   }
 
   Err(anyhow::anyhow!("tool loop exceeded"))
@@ -455,6 +570,12 @@ pub struct ChatSendResult {
   pub thread: ChatThread,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ChatSendStreamResult {
+  pub thread: ChatThread,
+  pub assistant_message_id: String,
+}
+
 #[tauri::command]
 pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: String) -> Result<ChatSendResult, String> {
   let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
@@ -511,4 +632,66 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
 
   Ok(ChatSendResult { thread })
+}
+
+#[tauri::command]
+pub fn chat_send_stream(app: AppHandle, profile_id: String, chat_id: String, text: String) -> Result<ChatSendStreamResult, String> {
+  let mut idx = load_index(&app, &profile_id).map_err(|e| e.to_string())?;
+  let pos = idx
+    .chats
+    .iter()
+    .position(|c| c.id == chat_id)
+    .ok_or_else(|| "chat not found".to_string())?;
+
+  let chat_id2 = idx.chats[pos].id.clone();
+
+  let mut thread = load_thread(&app, &profile_id, &chat_id2).map_err(|e| e.to_string())?;
+
+  let msg_user = ChatMessage {
+    id: new_id("m"),
+    role: ChatRole::User,
+    text: text.clone(),
+    created_at_ms: now_ms(),
+  };
+  thread.messages.push(msg_user);
+
+  // Create placeholder assistant message to stream into.
+  let assistant_message_id = new_id("m");
+  let msg_ai = ChatMessage {
+    id: assistant_message_id.clone(),
+    role: ChatRole::Assistant,
+    text: "".to_string(),
+    created_at_ms: now_ms(),
+  };
+  thread.messages.push(msg_ai);
+
+  // Persist immediately
+  idx.chats[pos].updated_at_ms = now_ms();
+  save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
+  save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
+
+  // Spawn background streaming task
+  let app2 = app.clone();
+  let profile_id2 = profile_id.clone();
+  let chat_id3 = chat_id2.clone();
+  let assistant_id2 = assistant_message_id.clone();
+
+  std::thread::spawn(move || {
+    let res = stream_ollama_into_thread(&app2, &profile_id2, &chat_id3, &assistant_id2);
+    if let Err(e) = res {
+      let _ = app2.emit(
+        "chat_stream",
+        crate::chat_stream::ChatStreamEvent {
+          profile_id: profile_id2.clone(),
+          chat_id: chat_id3.clone(),
+          message_id: assistant_id2.clone(),
+          delta: "".to_string(),
+          done: true,
+          error: Some(e.to_string()),
+        },
+      );
+    }
+  });
+
+  Ok(ChatSendStreamResult { thread, assistant_message_id })
 }

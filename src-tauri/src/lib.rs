@@ -1,4 +1,5 @@
 mod chats;
+mod chat_stream;
 mod gateway;
 mod desktop_agent;
 mod models;
@@ -48,6 +49,7 @@ pub fn run() {
             chats::chats_delete,
             chats::chat_thread,
             chats::chat_send,
+            chats::chat_send_stream,
             chats::chats_update,
             models::models_status,
             models::models_set_default,
