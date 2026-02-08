@@ -641,6 +641,16 @@ button:disabled {
   align-self: flex-start;
 }
 
+.oc-msg.tool {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.02);
+  border-style: dashed;
+}
+
+.oc-msg.tool .oc-msg-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 .oc-msg-meta {
   font-size: 11px;
   color: var(--muted2);

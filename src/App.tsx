@@ -91,6 +91,8 @@ export default function App() {
         delta: string;
         done: boolean;
         error?: string | null;
+        new_role?: string | null;
+        new_created_at_ms?: number | null;
       }>("chat_stream", (event) => {
         const p = event.payload;
         if (!activeProfileId || p.profile_id !== activeProfileId) return;
@@ -99,10 +101,22 @@ export default function App() {
         setThread((prev) => {
           if (!prev) return prev;
           const next = { ...prev, messages: prev.messages.map((m) => ({ ...m })) };
-          const msg = next.messages.find((m) => m.id === p.message_id);
+
+          let msg = next.messages.find((m) => m.id === p.message_id);
+          if (!msg && p.new_role) {
+            next.messages.push({
+              id: p.message_id,
+              role: (p.new_role as "user" | "assistant" | "tool") ?? "tool",
+              text: "",
+              created_at_ms: p.new_created_at_ms ?? Date.now(),
+            });
+            msg = next.messages.find((m) => m.id === p.message_id);
+          }
+
           if (msg) {
             msg.text = (msg.text ?? "") + (p.delta ?? "");
           }
+
           return next;
         });
 

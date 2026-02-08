@@ -61,6 +61,7 @@ impl Default for ChatIndex {
 pub enum ChatRole {
   User,
   Assistant,
+  Tool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -315,6 +316,7 @@ fn base_msgs_for_thread(dev_full_exec_auto: bool, thread: &ChatThread, take_last
     let role = match m.role {
       ChatRole::User => OllamaRole::User,
       ChatRole::Assistant => OllamaRole::Assistant,
+      ChatRole::Tool => OllamaRole::User,
     };
     msgs.push(OllamaMessage { role, content: m.text.clone() });
   }
@@ -365,7 +367,8 @@ fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread)
             continue;
           }
 
-          let out = crate::tools::exec(&cmd).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          let cwd = profile_dir(app, profile_id).unwrap_or_else(|_| std::env::temp_dir());
+          let out = crate::tools::exec(&cmd, &cwd).unwrap_or_else(|e| format!("[tool_error] {e}"));
           msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
           msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (exec):\n$ {cmd}\n\n{out}") });
           continue;
@@ -420,6 +423,8 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
               delta: delta.clone(),
               done: false,
               error: None,
+              new_role: None,
+              new_created_at_ms: None,
             },
           );
 
@@ -443,6 +448,8 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
               delta: "".to_string(),
               done: true,
               error: None,
+              new_role: None,
+              new_created_at_ms: None,
             },
           );
         }
@@ -484,7 +491,39 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
             msgs.push(OllamaMessage { role: OllamaRole::User, content: "Tool denied: exec is disabled (Developer Mode off). Return a final answer without exec.".to_string() });
             continue;
           }
-          let out = crate::tools::exec(&cmd).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          let cwd = profile_dir(app, profile_id).unwrap_or_else(|_| std::env::temp_dir());
+          let out = crate::tools::exec(&cmd, &cwd).unwrap_or_else(|e| format!("[tool_error] {e}"));
+
+          // Record tool step in thread
+          let tool_id = new_id("t");
+          {
+            let t = load_thread(app, profile_id, chat_id).ok();
+            if let Some(mut t) = t {
+              t.messages.push(ChatMessage {
+                id: tool_id.clone(),
+                role: ChatRole::Tool,
+                text: format!("exec (cwd={}):\n$ {}\n\n{}", cwd.to_string_lossy(), cmd, out),
+                created_at_ms: now_ms(),
+              });
+              save_thread(app, profile_id, &t).ok();
+            }
+          }
+
+          let created_at_ms = now_ms();
+          let _ = app.emit(
+            "chat_stream",
+            crate::chat_stream::ChatStreamEvent {
+              profile_id: profile_id.to_string(),
+              chat_id: chat_id.to_string(),
+              message_id: tool_id,
+              delta: format!("exec (cwd={}):\n$ {}\n\n{}", cwd.to_string_lossy(), cmd, out),
+              done: true,
+              error: None,
+              new_role: Some("tool".to_string()),
+              new_created_at_ms: Some(created_at_ms),
+            },
+          );
+
           msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
           msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (exec):\n$ {cmd}\n\n{out}") });
           continue;
@@ -688,6 +727,8 @@ pub fn chat_send_stream(app: AppHandle, profile_id: String, chat_id: String, tex
           delta: "".to_string(),
           done: true,
           error: Some(e.to_string()),
+          new_role: None,
+          new_created_at_ms: None,
         },
       );
     }

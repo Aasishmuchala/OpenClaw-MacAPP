@@ -131,7 +131,7 @@ export type ChatIndex = {
   chats: Chat[];
 };
 
-export type ChatRole = "user" | "assistant";
+export type ChatRole = "user" | "assistant" | "tool";
 
 export type ChatMessage = {
   id: string;

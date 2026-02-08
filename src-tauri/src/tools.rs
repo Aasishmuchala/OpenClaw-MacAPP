@@ -10,9 +10,10 @@ pub enum ToolCall {
   Final { text: String },
 }
 
-pub fn exec(cmd: &str) -> Result<String> {
+pub fn exec(cmd: &str, cwd: &std::path::Path) -> Result<String> {
   // zsh -lc for PATH + shell features.
   let out = Command::new("/bin/zsh")
+    .current_dir(cwd)
     .arg("-lc")
     .arg(cmd)
     .output()

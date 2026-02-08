@@ -76,8 +76,13 @@ export function ChatThreadView(props: { messages: ChatMessage[] }) {
   return (
     <div className="oc-thread">
       {items.map((m) => (
-        <div key={m.id} className={`oc-msg ${m.role === "assistant" ? "assistant" : "user"}`}>
-          <div className="oc-msg-meta">{m.role === "assistant" ? "Assistant" : "You"}</div>
+        <div
+          key={m.id}
+          className={`oc-msg ${m.role === "assistant" ? "assistant" : m.role === "tool" ? "tool" : "user"}`}
+        >
+          <div className="oc-msg-meta">
+            {m.role === "assistant" ? "Assistant" : m.role === "tool" ? "Tool" : "You"}
+          </div>
           <div className="oc-msg-text">{m.text}</div>
         </div>
       ))}
