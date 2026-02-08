@@ -316,7 +316,7 @@ fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: 
   full_args.extend(args);
 
   // Ensure the selected agent exists (creates a minimal-workspace agent by default).
-  let model_id = "ollama/huihui_ai/qwen3-vl-abliterated:8b";
+  let model_id = "ollama/huihui_ai/qwen3-abliterated:8b";
   ensure_desktop_agent(app, bin.clone(), openclaw_profile, &chosen_agent, model_id).ok();
 
   let mut last_err: Option<anyhow::Error> = None;

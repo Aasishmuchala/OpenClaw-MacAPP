@@ -45,7 +45,7 @@ export function ModelsPanel(props: {
     }
   }
 
-  const ollamaPreset = "ollama/huihui_ai/qwen3-vl-abliterated:8b";
+  const ollamaPreset = "ollama/huihui_ai/qwen3-abliterated:8b";
 
   return (
     <div className="oc-card">
@@ -72,7 +72,7 @@ export function ModelsPanel(props: {
             }}
             disabled={props.busy}
           >
-            Use Local Ollama (Qwen3-VL Abliterated 8B)
+            Use Local Ollama (Qwen3 Abliterated 8B)
           </button>
         </div>
 
