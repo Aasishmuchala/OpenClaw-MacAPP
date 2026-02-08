@@ -6,6 +6,8 @@ import { PermissionsPanel } from "./PermissionsPanel";
 import { ModelsPanel } from "./ModelsPanel";
 import { SidebarNav, type SectionKey } from "./components/SidebarNav";
 import { Modal } from "./components/Modal";
+import { ErrorBanner } from "./components/ErrorBanner";
+import { ToastHost, useToasts } from "./components/ToastHost";
 import { ProfileSidebar } from "./panels/ProfileSidebar";
 import { TopBar } from "./panels/TopBar";
 import { ChatsPanel } from "./panels/ChatsPanel";
@@ -54,6 +56,9 @@ export default function App() {
   const [launchOnLogin, setLaunchOnLogin] = useState<boolean | null>(null);
   const [section, setSection] = useState<SectionKey>("chats");
 
+  const [banner, setBanner] = useState<{ title: string; message?: string } | null>(null);
+  const toasts = useToasts();
+
   const [modal, setModal] = useState<
     | null
     | { kind: "rename_profile"; profileId: string; value: string }
@@ -78,10 +83,15 @@ export default function App() {
         setBusy("Loading profiles…");
         const s = await profilesList();
         setStore(s);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setBanner({ title: "Failed to load profiles", message: msg });
+        toasts.push({ kind: "error", title: "Failed to load profiles", message: msg, timeoutMs: 6000 });
       } finally {
         setBusy(null);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -154,6 +164,9 @@ export default function App() {
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Gateway check failed", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -167,6 +180,10 @@ export default function App() {
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
+      toasts.push({ kind: "success", title: "Gateway started", timeoutMs: 2500 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Gateway start failed", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -180,6 +197,10 @@ export default function App() {
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
+      toasts.push({ kind: "success", title: "Gateway stopped", timeoutMs: 2500 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Gateway stop failed", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -193,6 +214,10 @@ export default function App() {
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
+      toasts.push({ kind: "success", title: "Gateway restarted", timeoutMs: 2500 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Gateway restart failed", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -205,6 +230,7 @@ export default function App() {
     try {
       const s = await profilesCreate(n);
       setStore(s);
+      toasts.push({ kind: "success", title: "Profile created", message: n, timeoutMs: 2500 });
     } finally {
       setBusy(null);
     }
@@ -215,6 +241,10 @@ export default function App() {
     try {
       const s = await profilesSetActive(profileId);
       setStore(s);
+      setBanner(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toasts.push({ kind: "error", title: "Failed to switch profile", message: msg, timeoutMs: 6000 });
     } finally {
       setBusy(null);
     }
@@ -652,7 +682,12 @@ export default function App() {
           <div className="oc-muted">This removes the secret from Keychain for the active profile.</div>
         </Modal>
 
+        <ToastHost toasts={toasts.toasts} onDismiss={toasts.dismiss} />
+
         <div className="oc-content">
+          {banner ? (
+            <ErrorBanner title={banner.title} message={banner.message} onClose={() => setBanner(null)} />
+          ) : null}
           <div className="oc-grid">
             {section === "chats" ? (
               <ChatsPanel
