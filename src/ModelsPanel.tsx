@@ -57,9 +57,18 @@ export function ModelsPanel(props: {
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               setModel(ollamaPreset);
-              props.onToast?.({ kind: "info", title: "Preset selected", message: ollamaPreset });
+              props.onToast?.({ kind: "info", title: "Setting default model…", message: ollamaPreset });
+              try {
+                await modelsSetDefault(props.profileId, ollamaPreset);
+                await refresh();
+                setModel("");
+                props.onToast?.({ kind: "success", title: "Default model set", message: ollamaPreset });
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                props.onToast?.({ kind: "error", title: "Failed to set default model", message: msg });
+              }
             }}
             disabled={props.busy}
           >
