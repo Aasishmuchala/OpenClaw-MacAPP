@@ -367,8 +367,76 @@ fn system_prompt(dev_full_exec_auto: bool, auto_do_mode: bool) -> String {
 
 fn is_action_request(s: &str) -> bool {
   let t = s.to_lowercase();
-  let kws = ["do it", "get it done", "fix", "install", "set up", "setup", "run", "execute", "create", "delete", "remove", "update", "build", "deploy"];
+  let kws = [
+    "do it",
+    "get it done",
+    "fix",
+    "install",
+    "set up",
+    "setup",
+    "run",
+    "execute",
+    "create",
+    "delete",
+    "remove",
+    "update",
+    "build",
+    "deploy",
+  ];
   kws.iter().any(|k| t.contains(k))
+}
+
+fn extract_first_json_object(s: &str) -> Option<(String, String)> {
+  // Extract the first {...} JSON object from a string, ignoring braces inside strings.
+  let mut in_str = false;
+  let mut escape = false;
+  let mut depth: i32 = 0;
+  let mut start: Option<usize> = None;
+
+  for (i, ch) in s.char_indices() {
+    if in_str {
+      if escape {
+        escape = false;
+      } else if ch == '\\' {
+        escape = true;
+      } else if ch == '"' {
+        in_str = false;
+      }
+      continue;
+    }
+
+    if ch == '"' {
+      in_str = true;
+      continue;
+    }
+
+    if ch == '{' {
+      if depth == 0 {
+        start = Some(i);
+      }
+      depth += 1;
+      continue;
+    }
+
+    if ch == '}' {
+      if depth > 0 {
+        depth -= 1;
+        if depth == 0 {
+          if let Some(st) = start {
+            let json = s[st..=i].to_string();
+            let rest = s[i + 1..].to_string();
+            return Some((json, rest));
+          }
+        }
+      }
+    }
+  }
+
+  None
+}
+
+fn is_http_url(u: &str) -> bool {
+  u.starts_with("http://") || u.starts_with("https://")
 }
 
 fn base_msgs_for_thread(dev_full_exec_auto: bool, auto_do_mode: bool, thread: &ChatThread, take_last: usize) -> Vec<OllamaMessage> {
@@ -429,7 +497,11 @@ fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread)
 
     let content = resp.message.content;
 
-    if let Ok(call) = serde_json::from_str::<ToolCall>(&content) {
+    let parsed = serde_json::from_str::<ToolCall>(&content)
+      .ok()
+      .or_else(|| extract_first_json_object(&content).and_then(|(j, _rest)| serde_json::from_str::<ToolCall>(&j).ok()));
+
+    if let Some(call) = parsed {
       match call {
         ToolCall::Final { text } => return Ok(text),
         ToolCall::WebGet { url } => {
@@ -548,7 +620,11 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
     save_thread(app, profile_id, &t).ok();
 
     // Tool handling
-    if let Ok(call) = serde_json::from_str::<ToolCall>(&accumulated) {
+    let parsed = serde_json::from_str::<ToolCall>(&accumulated)
+      .ok()
+      .or_else(|| extract_first_json_object(&accumulated).and_then(|(j, _rest)| serde_json::from_str::<ToolCall>(&j).ok()));
+
+    if let Some(call) = parsed {
       match call {
         ToolCall::Final { text } => {
           let mut t2 = load_thread(app, profile_id, chat_id).context("reload thread")?;
@@ -559,7 +635,48 @@ fn stream_ollama_into_thread(app: &AppHandle, profile_id: &str, chat_id: &str, a
           return Ok(());
         }
         ToolCall::WebGet { url } => {
+          if !is_http_url(&url) {
+            // Tell the model this tool only supports http(s)
+            msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
+            msgs.push(OllamaMessage {
+              role: OllamaRole::User,
+              content: format!("Tool error: web_get only supports http(s) URLs, got: {url}. Use exec (cat/ls) for local files."),
+            });
+            continue;
+          }
+
           let out = crate::tools::web_get(&url).unwrap_or_else(|e| format!("[tool_error] {e}"));
+
+          // Record tool step in thread
+          let tool_id = new_id("t");
+          {
+            let t = load_thread(app, profile_id, chat_id).ok();
+            if let Some(mut t) = t {
+              t.messages.push(ChatMessage {
+                id: tool_id.clone(),
+                role: ChatRole::Tool,
+                text: format!("web_get:\n{url}\n\n{}", out),
+                created_at_ms: now_ms(),
+              });
+              save_thread(app, profile_id, &t).ok();
+            }
+          }
+
+          let created_at_ms = now_ms();
+          let _ = app.emit(
+            "chat_stream",
+            crate::chat_stream::ChatStreamEvent {
+              profile_id: profile_id.to_string(),
+              chat_id: chat_id.to_string(),
+              message_id: tool_id,
+              delta: format!("web_get:\n{url}\n\n{}", out),
+              done: true,
+              error: None,
+              new_role: Some("tool".to_string()),
+              new_created_at_ms: Some(created_at_ms),
+            },
+          );
+
           msgs.push(OllamaMessage { role: OllamaRole::Assistant, content: accumulated.clone() });
           msgs.push(OllamaMessage { role: OllamaRole::User, content: format!("Tool result (web_get):\nURL: {url}\n\n{out}") });
           continue;
