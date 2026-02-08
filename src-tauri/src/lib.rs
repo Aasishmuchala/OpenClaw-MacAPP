@@ -1,6 +1,7 @@
 mod chats;
 mod gateway;
 mod profiles;
+mod settings;
 mod state;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -16,6 +17,8 @@ pub fn run() {
             profiles::secret_set,
             profiles::secret_get,
             profiles::secret_delete,
+            settings::settings_get,
+            settings::settings_set_openclaw_path,
             gateway::gateway_status,
             gateway::gateway_start,
             gateway::gateway_stop,

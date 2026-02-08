@@ -11,8 +11,8 @@ fn now_ms() -> i64 {
   dur.as_millis() as i64
 }
 
-fn openclaw_path() -> PathBuf {
-  PathBuf::from("/Users/aasish/.nvm/versions/node/v22.22.0/bin/openclaw")
+fn openclaw_path(app: &AppHandle, profile_id: &str) -> Result<PathBuf> {
+  crate::settings::resolve_openclaw_bin(app, profile_id)
 }
 
 fn profile_dir(app: &AppHandle, profile_id: &str) -> Result<PathBuf> {
@@ -201,7 +201,7 @@ struct AgentPayload {
   text: Option<String>,
 }
 
-fn run_agent(session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
+fn run_agent(bin: PathBuf, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
   let mut args: Vec<String> = vec![
     "agent".into(),
     "--session-id".into(),
@@ -223,7 +223,7 @@ fn run_agent(session_id: &str, message: &str, thinking: Option<&str>, agent_id: 
     args.push(a.into());
   }
 
-  let out = Command::new(openclaw_path())
+  let out = Command::new(bin)
     .args(args)
     .output()
     .context("failed to run openclaw agent")?;
@@ -268,7 +268,9 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   thread.messages.push(msg_user);
 
   // call OpenClaw
+  let bin = openclaw_path(&app, &profile_id).map_err(|e| e.to_string())?;
   let reply = run_agent(
+    bin,
     &chat.session_id,
     &text,
     chat.thinking.as_deref(),

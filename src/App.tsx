@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { ChatList, ChatThreadView } from "./AppChat";
+import { SettingsPanel } from "./SettingsPanel";
 import {
   gatewayLogs,
   gatewayRestart,
@@ -94,7 +95,8 @@ export default function App() {
   async function refreshGateway() {
     setBusy("Checking gateway…");
     try {
-      const s = await gatewayStatus();
+      if (!active) return;
+      const s = await gatewayStatus(active.id);
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
@@ -106,7 +108,8 @@ export default function App() {
   async function gwStart() {
     setBusy("Starting gateway…");
     try {
-      const s = await gatewayStart();
+      if (!active) return;
+      const s = await gatewayStart(active.id);
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
@@ -118,7 +121,8 @@ export default function App() {
   async function gwStop() {
     setBusy("Stopping gateway…");
     try {
-      const s = await gatewayStop();
+      if (!active) return;
+      const s = await gatewayStop(active.id);
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
@@ -130,7 +134,8 @@ export default function App() {
   async function gwRestart() {
     setBusy("Restarting gateway…");
     try {
-      const s = await gatewayRestart();
+      if (!active) return;
+      const s = await gatewayRestart(active.id);
       setGw(s);
       const l = await gatewayLogs(200);
       setGwLogs(l);
@@ -403,6 +408,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {active ? <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
 
             <div className="oc-card">
               <div className="oc-card-title">Gateway (Milestone 2)</div>

@@ -55,20 +55,33 @@ export type GatewayLogs = {
   err: string;
 };
 
-export async function gatewayStatus(): Promise<GatewayStatus> {
-  return invoke("gateway_status");
+export type ProfileSettings = {
+  version: number;
+  openclaw_path: string | null;
+};
+
+export async function settingsGet(profileId: string): Promise<ProfileSettings> {
+  return invoke("settings_get", { profileId });
 }
 
-export async function gatewayStart(): Promise<GatewayStatus> {
-  return invoke("gateway_start");
+export async function settingsSetOpenclawPath(profileId: string, openclawPath: string | null): Promise<ProfileSettings> {
+  return invoke("settings_set_openclaw_path", { profileId, openclawPath });
 }
 
-export async function gatewayStop(): Promise<GatewayStatus> {
-  return invoke("gateway_stop");
+export async function gatewayStatus(profileId: string): Promise<GatewayStatus> {
+  return invoke("gateway_status", { profileId });
 }
 
-export async function gatewayRestart(): Promise<GatewayStatus> {
-  return invoke("gateway_restart");
+export async function gatewayStart(profileId: string): Promise<GatewayStatus> {
+  return invoke("gateway_start", { profileId });
+}
+
+export async function gatewayStop(profileId: string): Promise<GatewayStatus> {
+  return invoke("gateway_stop", { profileId });
+}
+
+export async function gatewayRestart(profileId: string): Promise<GatewayStatus> {
+  return invoke("gateway_restart", { profileId });
 }
 
 export async function gatewayLogs(lines = 200): Promise<GatewayLogs> {

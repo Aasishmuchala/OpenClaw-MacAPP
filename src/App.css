@@ -96,6 +96,28 @@ body {
   outline: none;
 }
 
+.oc-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  outline: none;
+}
+
+.oc-field-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.86);
+  margin-bottom: 6px;
+}
+
+.oc-field-help {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
 button {
   border: 1px solid var(--stroke);
   background: rgba(255, 255, 255, 0.06);
