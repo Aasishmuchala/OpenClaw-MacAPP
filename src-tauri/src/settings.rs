@@ -19,17 +19,22 @@ fn settings_path(app: &AppHandle, profile_id: &str) -> Result<PathBuf> {
 pub struct ProfileSettings {
   pub version: i32,
   pub openclaw_path: Option<String>,
+  pub openclaw_profile: Option<String>,
 }
 
 pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSettings> {
   let path = settings_path(app, profile_id)?;
   if !path.exists() {
-    return Ok(ProfileSettings { version: 1, openclaw_path: None });
+    return Ok(ProfileSettings { version: 1, openclaw_path: None, openclaw_profile: None });
   }
   let raw = fs::read_to_string(&path).context("failed to read settings.json")?;
   let mut s: ProfileSettings = serde_json::from_str(&raw).context("failed to parse settings.json")?;
   if s.version == 0 {
     s.version = 1;
+  }
+  // backfill
+  if s.openclaw_profile.is_none() {
+    s.openclaw_profile = None;
   }
   Ok(s)
 }
@@ -66,6 +71,24 @@ pub fn resolve_openclaw_bin(app: &AppHandle, profile_id: &str) -> Result<PathBuf
   Ok(PathBuf::from("/Users/aasish/.nvm/versions/node/v22.22.0/bin/openclaw"))
 }
 
+pub fn resolve_openclaw_profile(app: &AppHandle, profile_id: &str) -> Result<String> {
+  let s = load_settings(app, profile_id).unwrap_or_default();
+  if let Some(p) = s.openclaw_profile {
+    let t = p.trim().to_string();
+    if !t.is_empty() {
+      return Ok(t);
+    }
+  }
+
+  // Derive a stable profile name from our local profile id.
+  // Keep it short-ish and filesystem-safe.
+  let safe = profile_id
+    .chars()
+    .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+    .collect::<String>();
+  Ok(format!("ocd-{safe}"))
+}
+
 #[tauri::command]
 pub fn settings_get(app: AppHandle, profile_id: String) -> Result<ProfileSettings, String> {
   load_settings(&app, &profile_id).map_err(|e| e.to_string())
@@ -73,7 +96,7 @@ pub fn settings_get(app: AppHandle, profile_id: String) -> Result<ProfileSetting
 
 #[tauri::command]
 pub fn settings_set_openclaw_path(app: AppHandle, profile_id: String, openclaw_path: Option<String>) -> Result<ProfileSettings, String> {
-  let mut s = load_settings(&app, &profile_id).unwrap_or(ProfileSettings { version: 1, openclaw_path: None });
+  let mut s = load_settings(&app, &profile_id).unwrap_or(ProfileSettings { version: 1, openclaw_path: None, openclaw_profile: None });
   s.version = 1;
   s.openclaw_path = openclaw_path.and_then(|x| {
     let t = x.trim().to_string();

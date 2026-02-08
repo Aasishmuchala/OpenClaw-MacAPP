@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { ChatList, ChatThreadView } from "./AppChat";
 import { SettingsPanel } from "./SettingsPanel";
+import { PermissionsPanel } from "./PermissionsPanel";
+import { ModelsPanel } from "./ModelsPanel";
 import { autostartGet, autostartSet } from "./lib/autostart";
 import { onTrayNewChat, onTrayRestartGateway } from "./lib/tray-events";
 import {
@@ -509,6 +511,8 @@ export default function App() {
             </div>
 
             {active ? <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
+            {active ? <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
+            <PermissionsPanel />
 
             <div className="oc-card">
               <div className="oc-card-title">Gateway (Milestone 2)</div>

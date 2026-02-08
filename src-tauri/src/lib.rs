@@ -1,5 +1,7 @@
 mod chats;
 mod gateway;
+mod models;
+mod openclaw;
 mod profiles;
 mod settings;
 mod state;
@@ -40,6 +42,8 @@ pub fn run() {
             chats::chat_thread,
             chats::chat_send,
             chats::chats_update,
+            models::models_status,
+            models::models_set_default,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

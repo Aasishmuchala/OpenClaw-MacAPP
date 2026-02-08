@@ -225,7 +225,7 @@ struct AgentPayload {
   text: Option<String>,
 }
 
-fn run_agent(bin: PathBuf, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
+fn run_agent(bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
   let mut args: Vec<String> = vec![
     "agent".into(),
     "--session-id".into(),
@@ -247,8 +247,12 @@ fn run_agent(bin: PathBuf, session_id: &str, message: &str, thinking: Option<&st
     args.push(a.into());
   }
 
+  // Prefix with OpenClaw profile so our app profiles stay isolated.
+  let mut full_args: Vec<String> = vec!["--profile".into(), openclaw_profile.to_string()];
+  full_args.extend(args);
+
   let out = Command::new(bin)
-    .args(args)
+    .args(full_args)
     .output()
     .context("failed to run openclaw agent")?;
 
@@ -302,10 +306,12 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
 
   // call OpenClaw
+  let oc_profile = crate::settings::resolve_openclaw_profile(&app, &profile_id).map_err(|e| e.to_string())?;
   let reply = match openclaw_path(&app, &profile_id)
     .and_then(|bin| {
       run_agent(
         bin,
+        &oc_profile,
         &session_id,
         &text,
         thinking.as_deref(),
