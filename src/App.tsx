@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { ChatList, ChatThreadView } from "./AppChat";
 import { SettingsPanel } from "./SettingsPanel";
+import { autostartGet, autostartSet } from "./lib/autostart";
 import {
   gatewayLogs,
   gatewayRestart,
@@ -45,6 +46,7 @@ export default function App() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [draft, setDraft] = useState("");
+  const [launchOnLogin, setLaunchOnLogin] = useState<boolean | null>(null);
 
   const active = useMemo(() => {
     const id = store?.active_profile_id ?? null;
@@ -76,6 +78,17 @@ export default function App() {
       }
     })();
   }, [active?.id]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await autostartGet();
+        setLaunchOnLogin(v);
+      } catch {
+        setLaunchOnLogin(false);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -345,6 +358,27 @@ export default function App() {
             <div className="oc-h2">Profile settings + secrets (Keychain)</div>
           </div>
           <div className="oc-topbar-right">
+            <div className="oc-toggle">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!launchOnLogin}
+                  disabled={launchOnLogin === null || !!busy}
+                  onChange={async (e) => {
+                    const on = e.currentTarget.checked;
+                    setBusy(on ? "Enabling launch at login…" : "Disabling launch at login…");
+                    try {
+                      await autostartSet(on);
+                      setLaunchOnLogin(on);
+                    } finally {
+                      setBusy(null);
+                    }
+                  }}
+                />
+                <span>Launch at login</span>
+              </label>
+            </div>
+
             <button className="primary" onClick={demoSecretWrite} disabled={!active || !!busy}>
               Set demo secret
             </button>
