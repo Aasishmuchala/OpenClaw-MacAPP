@@ -2,6 +2,7 @@ mod chats;
 mod gateway;
 mod models;
 mod openclaw;
+mod openclaw_exec;
 mod profiles;
 mod settings;
 mod state;

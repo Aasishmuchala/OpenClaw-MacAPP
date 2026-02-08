@@ -1,13 +1,11 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-fn run_openclaw(bin: PathBuf, args: &[String]) -> Result<(i32, String, String)> {
-  let out = Command::new(bin)
-    .args(args)
-    .output()
+fn run_openclaw(app: &AppHandle, bin: PathBuf, args: Vec<String>) -> Result<(i32, String, String)> {
+  let out = crate::openclaw_exec::run_openclaw(app, bin, args.clone())
     .with_context(|| format!("failed to run openclaw {}", args.join(" ")))?;
 
   let code = out.status.code().unwrap_or(-1);
@@ -53,7 +51,7 @@ fn args_with_profile(app: &AppHandle, profile_id: &str, rest: &[&str]) -> Result
 pub fn gateway_status(app: AppHandle, profile_id: String) -> Result<GatewayStatus, String> {
   let bin = crate::settings::resolve_openclaw_bin(&app, &profile_id).map_err(|e| e.to_string())?;
   let args = args_with_profile(&app, &profile_id, &["gateway", "status"]).map_err(|e| e.to_string())?;
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(GatewayStatus { exit_code: code, stdout, stderr })
 }
 
@@ -61,7 +59,7 @@ pub fn gateway_status(app: AppHandle, profile_id: String) -> Result<GatewayStatu
 pub fn gateway_start(app: AppHandle, profile_id: String) -> Result<GatewayStatus, String> {
   let bin = crate::settings::resolve_openclaw_bin(&app, &profile_id).map_err(|e| e.to_string())?;
   let args = args_with_profile(&app, &profile_id, &["gateway", "start"]).map_err(|e| e.to_string())?;
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(GatewayStatus { exit_code: code, stdout, stderr })
 }
 
@@ -69,7 +67,7 @@ pub fn gateway_start(app: AppHandle, profile_id: String) -> Result<GatewayStatus
 pub fn gateway_stop(app: AppHandle, profile_id: String) -> Result<GatewayStatus, String> {
   let bin = crate::settings::resolve_openclaw_bin(&app, &profile_id).map_err(|e| e.to_string())?;
   let args = args_with_profile(&app, &profile_id, &["gateway", "stop"]).map_err(|e| e.to_string())?;
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(GatewayStatus { exit_code: code, stdout, stderr })
 }
 
@@ -77,7 +75,7 @@ pub fn gateway_stop(app: AppHandle, profile_id: String) -> Result<GatewayStatus,
 pub fn gateway_restart(app: AppHandle, profile_id: String) -> Result<GatewayStatus, String> {
   let bin = crate::settings::resolve_openclaw_bin(&app, &profile_id).map_err(|e| e.to_string())?;
   let args = args_with_profile(&app, &profile_id, &["gateway", "restart"]).map_err(|e| e.to_string())?;
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(GatewayStatus { exit_code: code, stdout, stderr })
 }
 

@@ -51,10 +51,34 @@ fn which(cmd: &str) -> Result<Option<String>> {
   match out {
     Ok(o) if o.status.success() => {
       let p = String::from_utf8_lossy(&o.stdout).trim().to_string();
-      if p.is_empty() { Ok(None) } else { Ok(Some(p)) }
+      if p.is_empty() {
+        Ok(None)
+      } else {
+        Ok(Some(p))
+      }
     }
     _ => Ok(None),
   }
+}
+
+pub fn resolve_node_bin() -> Result<PathBuf> {
+  if let Some(p) = which("node")? {
+    return Ok(PathBuf::from(p));
+  }
+
+  // Prefer Homebrew node if present.
+  let brew = PathBuf::from("/opt/homebrew/bin/node");
+  if brew.exists() {
+    return Ok(brew);
+  }
+
+  // Fallback to the known NVM location in this environment.
+  Ok(PathBuf::from("/Users/aasish/.nvm/versions/node/v22.22.0/bin/node"))
+}
+
+pub fn is_node_script(path: &PathBuf) -> bool {
+  let s = path.to_string_lossy();
+  s.ends_with(".mjs") || s.ends_with(".js")
 }
 
 pub fn resolve_openclaw_bin(app: &AppHandle, profile_id: &str) -> Result<PathBuf> {

@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -225,7 +225,7 @@ struct AgentPayload {
   text: Option<String>,
 }
 
-fn run_agent(bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
+fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
   let mut args: Vec<String> = vec![
     "agent".into(),
     "--session-id".into(),
@@ -251,9 +251,7 @@ fn run_agent(bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &s
   let mut full_args: Vec<String> = vec!["--profile".into(), openclaw_profile.to_string()];
   full_args.extend(args);
 
-  let out = Command::new(bin)
-    .args(full_args)
-    .output()
+  let out = crate::openclaw_exec::run_openclaw(app, bin, full_args)
     .context("failed to run openclaw agent")?;
 
   if !out.status.success() {
@@ -310,6 +308,7 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   let reply = match openclaw_path(&app, &profile_id)
     .and_then(|bin| {
       run_agent(
+        &app,
         bin,
         &oc_profile,
         &session_id,

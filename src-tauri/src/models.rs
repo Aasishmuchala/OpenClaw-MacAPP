@@ -1,13 +1,9 @@
-use std::process::Command;
-
 use anyhow::{Context, Result};
 use serde::Serialize;
 use tauri::AppHandle;
 
-fn run_openclaw(bin: std::path::PathBuf, args: &[String]) -> Result<(i32, String, String)> {
-  let out = Command::new(bin)
-    .args(args)
-    .output()
+fn run_openclaw(app: &AppHandle, bin: std::path::PathBuf, args: Vec<String>) -> Result<(i32, String, String)> {
+  let out = crate::openclaw_exec::run_openclaw(app, bin, args.clone())
     .with_context(|| format!("failed to run openclaw {}", args.join(" ")))?;
   let code = out.status.code().unwrap_or(-1);
   let stdout = String::from_utf8_lossy(&out.stdout).to_string();
@@ -43,7 +39,7 @@ pub fn models_status(app: AppHandle, profile_id: String) -> Result<ModelsStatus,
     "status".into(),
     "--status-plain".into(),
   ];
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(ModelsStatus { exit_code: code, stdout, stderr })
 }
 
@@ -62,6 +58,6 @@ pub fn models_set_default(app: AppHandle, profile_id: String, model: String) -> 
     "set".into(),
     model,
   ];
-  let (code, stdout, stderr) = run_openclaw(bin, &args).map_err(|e| e.to_string())?;
+  let (code, stdout, stderr) = run_openclaw(&app, bin, args).map_err(|e| e.to_string())?;
   Ok(ModelsStatus { exit_code: code, stdout, stderr })
 }
