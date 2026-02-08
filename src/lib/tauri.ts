@@ -58,6 +58,10 @@ export type GatewayLogs = {
 export type ProfileSettings = {
   version: number;
   openclaw_path: string | null;
+  openclaw_profile?: string | null;
+  ollama_base_url?: string | null;
+  ollama_model?: string | null;
+  dev_full_exec_auto?: boolean | null;
 };
 
 export async function settingsGet(profileId: string): Promise<ProfileSettings> {
@@ -69,6 +73,27 @@ export async function settingsSetOpenclawPath(
   openclawPath: string | null,
 ): Promise<ProfileSettings> {
   return invoke("settings_set_openclaw_path", { profileId, openclawPath });
+}
+
+export async function settingsSetOllamaBaseUrl(
+  profileId: string,
+  ollamaBaseUrl: string | null,
+): Promise<ProfileSettings> {
+  return invoke("settings_set_ollama_base_url", { profileId, ollamaBaseUrl });
+}
+
+export async function settingsSetOllamaModel(
+  profileId: string,
+  ollamaModel: string | null,
+): Promise<ProfileSettings> {
+  return invoke("settings_set_ollama_model", { profileId, ollamaModel });
+}
+
+export async function settingsSetDevFullExecAuto(
+  profileId: string,
+  enabled: boolean,
+): Promise<ProfileSettings> {
+  return invoke("settings_set_dev_full_exec_auto", { profileId, enabled });
 }
 
 export async function gatewayStatus(profileId: string): Promise<GatewayStatus> {

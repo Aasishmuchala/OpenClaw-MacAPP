@@ -20,21 +20,44 @@ pub struct ProfileSettings {
   pub version: i32,
   pub openclaw_path: Option<String>,
   pub openclaw_profile: Option<String>,
+
+  // Local model (Ollama)
+  pub ollama_base_url: Option<String>,
+  pub ollama_model: Option<String>,
+
+  // Dangerous: allows unrestricted exec with no prompts.
+  pub dev_full_exec_auto: Option<bool>,
 }
 
 pub fn load_settings(app: &AppHandle, profile_id: &str) -> Result<ProfileSettings> {
   let path = settings_path(app, profile_id)?;
   if !path.exists() {
-    return Ok(ProfileSettings { version: 1, openclaw_path: None, openclaw_profile: None });
+    return Ok(ProfileSettings {
+      version: 1,
+      openclaw_path: None,
+      openclaw_profile: None,
+      ollama_base_url: Some("http://127.0.0.1:11434".to_string()),
+      ollama_model: Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string()),
+      dev_full_exec_auto: Some(false),
+    });
   }
   let raw = fs::read_to_string(&path).context("failed to read settings.json")?;
   let mut s: ProfileSettings = serde_json::from_str(&raw).context("failed to parse settings.json")?;
   if s.version == 0 {
     s.version = 1;
   }
-  // backfill
+  // backfill defaults
   if s.openclaw_profile.is_none() {
     s.openclaw_profile = None;
+  }
+  if s.ollama_base_url.is_none() {
+    s.ollama_base_url = Some("http://127.0.0.1:11434".to_string());
+  }
+  if s.ollama_model.is_none() {
+    s.ollama_model = Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string());
+  }
+  if s.dev_full_exec_auto.is_none() {
+    s.dev_full_exec_auto = Some(false);
   }
   Ok(s)
 }
@@ -120,12 +143,49 @@ pub fn settings_get(app: AppHandle, profile_id: String) -> Result<ProfileSetting
 
 #[tauri::command]
 pub fn settings_set_openclaw_path(app: AppHandle, profile_id: String, openclaw_path: Option<String>) -> Result<ProfileSettings, String> {
-  let mut s = load_settings(&app, &profile_id).unwrap_or(ProfileSettings { version: 1, openclaw_path: None, openclaw_profile: None });
+  let mut s = load_settings(&app, &profile_id).unwrap_or(ProfileSettings {
+    version: 1,
+    openclaw_path: None,
+    openclaw_profile: None,
+    ollama_base_url: Some("http://127.0.0.1:11434".to_string()),
+    ollama_model: Some("ollama/huihui_ai/qwen3-abliterated:8b".to_string()),
+    dev_full_exec_auto: Some(false),
+  });
   s.version = 1;
   s.openclaw_path = openclaw_path.and_then(|x| {
     let t = x.trim().to_string();
     if t.is_empty() { None } else { Some(t) }
   });
+  save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
+  Ok(s)
+}
+
+#[tauri::command]
+pub fn settings_set_ollama_base_url(app: AppHandle, profile_id: String, ollama_base_url: Option<String>) -> Result<ProfileSettings, String> {
+  let mut s = load_settings(&app, &profile_id).map_err(|e| e.to_string())?;
+  s.ollama_base_url = ollama_base_url.and_then(|x| {
+    let t = x.trim().to_string();
+    if t.is_empty() { None } else { Some(t) }
+  });
+  save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
+  Ok(s)
+}
+
+#[tauri::command]
+pub fn settings_set_ollama_model(app: AppHandle, profile_id: String, ollama_model: Option<String>) -> Result<ProfileSettings, String> {
+  let mut s = load_settings(&app, &profile_id).map_err(|e| e.to_string())?;
+  s.ollama_model = ollama_model.and_then(|x| {
+    let t = x.trim().to_string();
+    if t.is_empty() { None } else { Some(t) }
+  });
+  save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
+  Ok(s)
+}
+
+#[tauri::command]
+pub fn settings_set_dev_full_exec_auto(app: AppHandle, profile_id: String, enabled: bool) -> Result<ProfileSettings, String> {
+  let mut s = load_settings(&app, &profile_id).map_err(|e| e.to_string())?;
+  s.dev_full_exec_auto = Some(enabled);
   save_settings(&app, &profile_id, &s).map_err(|e| e.to_string())?;
   Ok(s)
 }

@@ -4,6 +4,9 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+use crate::ollama::{OllamaChatReq, OllamaMessage, OllamaRole};
+use crate::tools::ToolCall;
+
 fn now_ms() -> i64 {
   let dur = std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
@@ -285,6 +288,102 @@ fn ensure_desktop_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, a
   Ok(())
 }
 
+fn strip_ollama_prefix(model_id: &str) -> String {
+  model_id.strip_prefix("ollama/").unwrap_or(model_id).to_string()
+}
+
+fn system_prompt(dev_full_exec_auto: bool) -> String {
+  let mut s = String::new();
+  s.push_str("You are OpenClaw Desktop running locally. You can call tools when needed.\n\n");
+  s.push_str("TOOL CALLS:\n");
+  s.push_str("If (and only if) you need tools, respond with a single JSON object matching one of these shapes, with no extra text:\n");
+  s.push_str("- {\"tool\":\"web_get\",\"url\":\"https://example.com\"}\n");
+  s.push_str("- {\"tool\":\"exec\",\"cmd\":\"<shell command>\"}\n");
+  s.push_str("- {\"tool\":\"final\",\"text\":\"<final answer>\"}\n\n");
+  if dev_full_exec_auto {
+    s.push_str("EXEC MODE: FULL EXEC AUTO is ENABLED. You may run any shell command you deem necessary. Be careful and prefer read-only commands.\n");
+  } else {
+    s.push_str("EXEC MODE: restricted. Prefer web_get; avoid exec unless explicitly requested.\n");
+  }
+  s
+}
+
+fn run_ollama_with_tools(app: &AppHandle, profile_id: &str, thread: &ChatThread) -> Result<String> {
+  let settings = crate::settings::load_settings(app, profile_id).unwrap_or_default();
+  let base_url = settings
+    .ollama_base_url
+    .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
+  let model_id = settings
+    .ollama_model
+    .unwrap_or_else(|| "ollama/huihui_ai/qwen3-abliterated:8b".to_string());
+  let model = strip_ollama_prefix(&model_id);
+  let dev_full_exec_auto = settings.dev_full_exec_auto.unwrap_or(false);
+
+  // Build messages with a small window (fast). We'll keep last 24 messages.
+  let mut msgs: Vec<OllamaMessage> = vec![OllamaMessage { role: OllamaRole::System, content: system_prompt(dev_full_exec_auto) }];
+
+  for m in thread.messages.iter().rev().take(24).rev() {
+    let role = match m.role {
+      ChatRole::User => OllamaRole::User,
+      ChatRole::Assistant => OllamaRole::Assistant,
+    };
+    msgs.push(OllamaMessage { role, content: m.text.clone() });
+  }
+
+  // Tool loop
+  for _step in 0..6 {
+    let resp = crate::ollama::chat(
+      &base_url,
+      OllamaChatReq {
+        model: model.clone(),
+        messages: msgs.clone(),
+        stream: false,
+      },
+    )?;
+
+    let content = resp.message.content;
+
+    // If the model returns a tool call JSON, execute it.
+    if let Ok(call) = serde_json::from_str::<ToolCall>(&content) {
+      match call {
+        ToolCall::Final { text } => return Ok(text),
+        ToolCall::WebGet { url } => {
+          let out = crate::tools::web_get(&url).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
+          msgs.push(OllamaMessage {
+            role: OllamaRole::User,
+            content: format!("Tool result (web_get):\nURL: {url}\n\n{out}"),
+          });
+          continue;
+        }
+        ToolCall::Exec { cmd } => {
+          if !dev_full_exec_auto {
+            msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
+            msgs.push(OllamaMessage {
+              role: OllamaRole::User,
+              content: "Tool denied: exec is disabled (Developer Mode off). Return a final answer without exec.".to_string(),
+            });
+            continue;
+          }
+
+          let out = crate::tools::exec(&cmd).unwrap_or_else(|e| format!("[tool_error] {e}"));
+          msgs.push(OllamaMessage { role: OllamaRole::Assistant, content });
+          msgs.push(OllamaMessage {
+            role: OllamaRole::User,
+            content: format!("Tool result (exec):\n$ {cmd}\n\n{out}"),
+          });
+          continue;
+        }
+      }
+    }
+
+    // Normal assistant text.
+    return Ok(content);
+  }
+
+  Err(anyhow::anyhow!("tool loop exceeded"))
+}
+
 fn run_agent(app: &AppHandle, bin: PathBuf, openclaw_profile: &str, session_id: &str, message: &str, thinking: Option<&str>, agent_id: Option<&str>) -> Result<String> {
   let mut args: Vec<String> = vec![
     "agent".into(),
@@ -365,9 +464,6 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
     .position(|c| c.id == chat_id)
     .ok_or_else(|| "chat not found".to_string())?;
 
-  let session_id = idx.chats[pos].session_id.clone();
-  let thinking = idx.chats[pos].thinking.clone();
-  let agent_id = idx.chats[pos].agent_id.clone();
   let chat_id2 = idx.chats[pos].id.clone();
 
   let mut thread = load_thread(&app, &profile_id, &chat_id2).map_err(|e| e.to_string())?;
@@ -385,20 +481,8 @@ pub fn chat_send(app: AppHandle, profile_id: String, chat_id: String, text: Stri
   save_thread(&app, &profile_id, &thread).map_err(|e| e.to_string())?;
   save_index(&app, &profile_id, &idx).map_err(|e| e.to_string())?;
 
-  // call OpenClaw
-  let oc_profile = crate::settings::resolve_openclaw_profile(&app, &profile_id).map_err(|e| e.to_string())?;
-  let reply = match openclaw_path(&app, &profile_id)
-    .and_then(|bin| {
-      run_agent(
-        &app,
-        bin,
-        &oc_profile,
-        &session_id,
-        &text,
-        thinking.as_deref(),
-        agent_id.as_deref(),
-      )
-    }) {
+  // Fast path: call Ollama directly (tool loop handled in-process)
+  let reply = match run_ollama_with_tools(&app, &profile_id, &thread) {
     Ok(r) => r,
     Err(e) => {
       // Store error as assistant message (keeps UI consistent)

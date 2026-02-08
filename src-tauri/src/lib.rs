@@ -2,6 +2,8 @@ mod chats;
 mod gateway;
 mod desktop_agent;
 mod models;
+mod ollama;
+mod tools;
 mod openclaw;
 mod openclaw_exec;
 mod profiles;
@@ -32,6 +34,9 @@ pub fn run() {
             profiles::secret_delete,
             settings::settings_get,
             settings::settings_set_openclaw_path,
+            settings::settings_set_ollama_base_url,
+            settings::settings_set_ollama_model,
+            settings::settings_set_dev_full_exec_auto,
             gateway::gateway_status,
             gateway::gateway_start,
             gateway::gateway_stop,
