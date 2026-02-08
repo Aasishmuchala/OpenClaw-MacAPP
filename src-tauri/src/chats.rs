@@ -1,4 +1,11 @@
-use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use std::{
+  collections::{HashMap, HashSet},
+  fs,
+  path::PathBuf,
+  sync::{atomic::{AtomicU64, Ordering}, Arc, Mutex},
+  thread,
+  time::{Duration, Instant},
+};
 
 use once_cell::sync::Lazy;
 
@@ -120,8 +127,12 @@ fn save_thread(app: &AppHandle, profile_id: &str, t: &ChatThread) -> Result<()> 
   Ok(())
 }
 
+static ID_SEQ: Lazy<AtomicU64> = Lazy::new(|| AtomicU64::new(1));
+
 fn new_id(prefix: &str) -> String {
-  format!("{prefix}_{}", now_ms())
+  let ms = now_ms();
+  let seq = ID_SEQ.fetch_add(1, Ordering::Relaxed);
+  format!("{prefix}_{ms}_{seq}")
 }
 
 static INFLIGHT: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
