@@ -37,7 +37,9 @@ export function ProfileSidebar(props: {
         <div className="oc-section-title">Profiles</div>
 
         <div className="oc-profile-create">
-          <label className="sr-only" htmlFor="new-profile">New Profile</label>
+          <label className="sr-only" htmlFor="new-profile">
+            New Profile
+          </label>
           <input
             id="new-profile"
             name="new-profile"
@@ -64,7 +66,12 @@ export function ProfileSidebar(props: {
             const isActive = p.id === activeId;
             return (
               <div key={p.id} className={`oc-profile ${isActive ? "active" : ""}`}>
-                <button type="button" className="oc-profile-main" onClick={() => props.onSetActive(p.id)} disabled={props.busy}>
+                <button
+                  type="button"
+                  className="oc-profile-main"
+                  onClick={() => props.onSetActive(p.id)}
+                  disabled={props.busy}
+                >
                   <div className="oc-avatar">{initials(p.name)}</div>
                   <div className="oc-profile-meta">
                     <div className="oc-profile-name">{p.name}</div>

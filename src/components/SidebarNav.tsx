@@ -24,11 +24,7 @@ function Item(props: { active: boolean; label: string; onClick: () => void; disa
   );
 }
 
-export function SidebarNav(props: {
-  value: SectionKey;
-  onChange: (v: SectionKey) => void;
-  disabled?: boolean;
-}) {
+export function SidebarNav(props: { value: SectionKey; onChange: (v: SectionKey) => void; disabled?: boolean }) {
   const items: SectionKey[] = ["chats", "gateway", "models", "permissions", "settings"];
 
   return (

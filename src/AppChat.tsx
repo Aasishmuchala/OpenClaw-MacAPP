@@ -22,7 +22,9 @@ export function ChatList(props: {
       <div className="oc-section-title">Chats</div>
 
       <div className="oc-chat-create">
-        <label className="sr-only" htmlFor="new-chat-title">New Chat Title</label>
+        <label className="sr-only" htmlFor="new-chat-title">
+          New Chat Title
+        </label>
         <input
           id="new-chat-title"
           name="new-chat-title"

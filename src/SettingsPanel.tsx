@@ -38,7 +38,9 @@ export function SettingsPanel(props: { profileId: string; busy: boolean; onBusy:
           <div className="oc-field-help">
             Leave blank to auto-detect <code>openclaw</code> from PATH.
           </div>
-          <label className="sr-only" htmlFor="openclaw-path">OpenClaw CLI Path</label>
+          <label className="sr-only" htmlFor="openclaw-path">
+            OpenClaw CLI Path
+          </label>
           <input
             id="openclaw-path"
             name="openclaw-path"

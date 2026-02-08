@@ -47,7 +47,9 @@ export function ModelsPanel(props: { profileId: string; busy: boolean; onBusy: (
           <div className="oc-field-label">Set default model (per OpenClaw profile)</div>
           <div className="oc-field-help">Example: openai-codex/gpt-5.2</div>
           <div className="oc-row">
-            <label className="sr-only" htmlFor="default-model">Default Model</label>
+            <label className="sr-only" htmlFor="default-model">
+              Default Model
+            </label>
             <input
               id="default-model"
               name="default-model"

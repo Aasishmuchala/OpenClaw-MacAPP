@@ -64,7 +64,10 @@ export async function settingsGet(profileId: string): Promise<ProfileSettings> {
   return invoke("settings_get", { profileId });
 }
 
-export async function settingsSetOpenclawPath(profileId: string, openclawPath: string | null): Promise<ProfileSettings> {
+export async function settingsSetOpenclawPath(
+  profileId: string,
+  openclawPath: string | null,
+): Promise<ProfileSettings> {
   return invoke("settings_set_openclaw_path", { profileId, openclawPath });
 }
 
@@ -133,7 +136,7 @@ export async function chatsRename(profileId: string, chatId: string, title: stri
 export async function chatsUpdate(
   profileId: string,
   chatId: string,
-  opts: { thinking?: string | null; agentId?: string | null }
+  opts: { thinking?: string | null; agentId?: string | null },
 ): Promise<ChatIndex> {
   return invoke("chats_update", {
     profileId,

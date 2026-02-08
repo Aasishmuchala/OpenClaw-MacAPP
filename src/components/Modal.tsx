@@ -7,14 +7,16 @@ export function Modal(props: {
   footer?: ReactNode;
   onClose: () => void;
 }) {
+  const { open, onClose } = props;
+
   useEffect(() => {
-    if (!props.open) return;
+    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") props.onClose();
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [props.open, props.onClose]);
+  }, [open, onClose]);
 
   if (!props.open) return null;
 

@@ -70,6 +70,8 @@ export default function App() {
     return store?.profiles.find((p) => p.id === id) ?? null;
   }, [store]);
 
+  const activeProfileId = active?.id ?? null;
+
   useEffect(() => {
     (async () => {
       try {
@@ -84,9 +86,9 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      if (!active) return;
+      if (!activeProfileId) return;
       try {
-        const idx = await chatsList(active.id);
+        const idx = await chatsList(activeProfileId);
         setChats(idx.chats);
         const first = idx.chats[0]?.id ?? null;
         setActiveChatId((prev) => prev ?? first);
@@ -94,7 +96,7 @@ export default function App() {
         // ignore
       }
     })();
-  }, [active?.id]);
+  }, [activeProfileId]);
 
   useEffect(() => {
     (async () => {
@@ -131,18 +133,18 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      if (!active || !activeChatId) {
+      if (!activeProfileId || !activeChatId) {
         setThread(null);
         return;
       }
       try {
-        const t = await chatThread(active.id, activeChatId);
+        const t = await chatThread(activeProfileId, activeChatId);
         setThread(t);
       } catch {
         setThread(null);
       }
     })();
-  }, [active?.id, activeChatId]);
+  }, [activeProfileId, activeChatId]);
 
   async function refreshGateway() {
     setBusy("Checking gateway…");
@@ -410,7 +412,9 @@ export default function App() {
         >
           <div className="oc-field">
             <div className="oc-field-label">Profile name</div>
-            <label className="sr-only" htmlFor="rename-profile">Profile name</label>
+            <label className="sr-only" htmlFor="rename-profile">
+              Profile name
+            </label>
             <input
               id="rename-profile"
               name="rename-profile"
@@ -491,7 +495,9 @@ export default function App() {
         >
           <div className="oc-field">
             <div className="oc-field-label">Chat title</div>
-            <label className="sr-only" htmlFor="rename-chat">Chat title</label>
+            <label className="sr-only" htmlFor="rename-chat">
+              Chat title
+            </label>
             <input
               id="rename-chat"
               name="rename-chat"
@@ -576,7 +582,9 @@ export default function App() {
           <div className="oc-field">
             <div className="oc-field-label">Value</div>
             <div className="oc-field-help">Stored in macOS Keychain for the active profile.</div>
-            <label className="sr-only" htmlFor="secret">Secret value</label>
+            <label className="sr-only" htmlFor="secret">
+              Secret value
+            </label>
             <input
               id="secret"
               name="secret"
@@ -608,7 +616,7 @@ export default function App() {
         >
           <div className="oc-mono">
             <div className="oc-mono-title">Value</div>
-            <pre>{modal?.kind === "secret_show" ? modal.value ?? "(not set)" : ""}</pre>
+            <pre>{modal?.kind === "secret_show" ? (modal.value ?? "(not set)") : ""}</pre>
           </div>
         </Modal>
 
@@ -676,9 +684,13 @@ export default function App() {
               />
             ) : null}
 
-            {section === "models" && active ? <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
+            {section === "models" && active ? (
+              <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} />
+            ) : null}
             {section === "permissions" ? <PermissionsPanel /> : null}
-            {section === "settings" && active ? <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
+            {section === "settings" && active ? (
+              <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} />
+            ) : null}
           </div>
         </div>
       </main>

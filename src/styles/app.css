@@ -5,7 +5,7 @@
   --bg: #0b0f17;
   --panel: rgba(255, 255, 255, 0.06);
   --panel2: rgba(255, 255, 255, 0.08);
-  --stroke: rgba(255, 255, 255, 0.10);
+  --stroke: rgba(255, 255, 255, 0.1);
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.62);
   --muted2: rgba(255, 255, 255, 0.45);
@@ -21,10 +21,19 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: radial-gradient(1200px 800px at 15% 15%, rgba(124, 92, 255, 0.22), transparent 55%),
-    radial-gradient(900px 700px at 85% 20%, rgba(39, 229, 255, 0.10), transparent 50%), var(--bg);
+  background:
+    radial-gradient(1200px 800px at 15% 15%, rgba(124, 92, 255, 0.22), transparent 55%),
+    radial-gradient(900px 700px at 85% 20%, rgba(39, 229, 255, 0.1), transparent 50%), var(--bg);
   color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    "Apple Color Emoji",
     "Segoe UI Emoji";
 }
 
@@ -268,7 +277,9 @@ button:disabled {
 
 .oc-profile.active {
   border-color: rgba(124, 92, 255, 0.45);
-  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.25), 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(124, 92, 255, 0.25),
+    0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
 .oc-profile-main {
@@ -372,7 +383,7 @@ button:disabled {
 }
 
 .oc-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.03);
@@ -437,7 +448,7 @@ button:disabled {
 }
 
 .oc-chat {
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
@@ -476,7 +487,7 @@ button:disabled {
 }
 
 .oc-thread-wrap {
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.18);
@@ -487,7 +498,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .oc-thread-title {
@@ -511,7 +522,7 @@ button:disabled {
   height: 34px;
   padding: 6px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
 }
@@ -527,7 +538,7 @@ button:disabled {
 
 .oc-msg {
   max-width: 86%;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -552,7 +563,7 @@ button:disabled {
 .oc-msg-text {
   white-space: pre-wrap;
   word-break: break-word;
-  color: rgba(255, 255, 255, 0.90);
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.5;
 }
 
@@ -561,7 +572,7 @@ button:disabled {
   grid-template-columns: 1fr auto;
   gap: 10px;
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .oc-compose textarea {
@@ -569,7 +580,7 @@ button:disabled {
   height: 44px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
 }
@@ -597,7 +608,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.03);
@@ -629,7 +640,7 @@ button:disabled {
 
 .oc-mono {
   margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.22);
   overflow: hidden;
@@ -639,7 +650,7 @@ button:disabled {
   font-size: 12px;
   color: var(--muted2);
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .oc-mono pre {
@@ -671,7 +682,7 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
   padding: 2px 6px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .oc-card-body ul {

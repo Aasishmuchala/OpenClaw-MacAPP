@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
 
-export function TopBar(props: {
-  title: string;
-  subtitle: string;
-  right?: ReactNode;
-}) {
+export function TopBar(props: { title: string; subtitle: string; right?: ReactNode }) {
   return (
     <div className="oc-topbar">
       <div className="oc-topbar-left">

@@ -26,14 +26,18 @@ export function ChatsPanel(props: {
 
               {props.activeChatId ? (
                 <div className="oc-thread-controls">
-                  <label className="sr-only" htmlFor="thinking">Thinking</label>
+                  <label className="sr-only" htmlFor="thinking">
+                    Thinking
+                  </label>
                   <select
                     id="thinking"
                     name="thinking"
                     className="oc-select"
                     value={activeChat?.thinking ?? "low"}
                     disabled={props.busy}
-                    onChange={(e) => props.onUpdateChatSettings(props.activeChatId!, { thinking: e.currentTarget.value })}
+                    onChange={(e) =>
+                      props.onUpdateChatSettings(props.activeChatId!, { thinking: e.currentTarget.value })
+                    }
                   >
                     {["off", "minimal", "low", "medium", "high"].map((t) => (
                       <option key={t} value={t}>
@@ -42,7 +46,9 @@ export function ChatsPanel(props: {
                     ))}
                   </select>
 
-                  <label className="sr-only" htmlFor="agent-id">Agent ID (optional)</label>
+                  <label className="sr-only" htmlFor="agent-id">
+                    Agent ID (optional)
+                  </label>
                   <input
                     id="agent-id"
                     name="agent-id"
@@ -61,7 +67,11 @@ export function ChatsPanel(props: {
             </div>
 
             <div className="oc-thread-actions">
-              <button type="button" onClick={() => props.onRefreshThread()} disabled={!props.activeChatId || props.busy}>
+              <button
+                type="button"
+                onClick={() => props.onRefreshThread()}
+                disabled={!props.activeChatId || props.busy}
+              >
                 Refresh
               </button>
             </div>
@@ -70,7 +80,9 @@ export function ChatsPanel(props: {
           <ChatThreadView messages={props.thread?.messages ?? []} />
 
           <div className="oc-compose">
-            <label className="sr-only" htmlFor="composer">Message</label>
+            <label className="sr-only" htmlFor="composer">
+              Message
+            </label>
             <textarea
               id="composer"
               name="composer"
@@ -79,7 +91,12 @@ export function ChatsPanel(props: {
               placeholder={props.activeChatId ? "Message…" : "Create a chat first"}
               disabled={!props.activeChatId || props.busy}
             />
-            <button type="button" className="primary" onClick={() => props.onSend()} disabled={!props.activeChatId || props.busy || !props.draft.trim()}>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => props.onSend()}
+              disabled={!props.activeChatId || props.busy || !props.draft.trim()}
+            >
               Send
             </button>
           </div>
