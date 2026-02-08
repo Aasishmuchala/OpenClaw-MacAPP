@@ -60,7 +60,7 @@ export default function App() {
 
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const v = localStorage.getItem("oc_theme");
-    return v === "light" ? "light" : "dark";
+    return v === "dark" ? "dark" : "light";
   });
 
   const [banner, setBanner] = useState<{ title: string; message?: string } | null>(null);

@@ -75,17 +75,29 @@ export function ChatThreadView(props: { messages: ChatMessage[] }) {
 
   return (
     <div className="oc-thread">
-      {items.map((m) => (
-        <div
-          key={m.id}
-          className={`oc-msg ${m.role === "assistant" ? "assistant" : m.role === "tool" ? "tool" : "user"}`}
-        >
-          <div className="oc-msg-meta">
-            {m.role === "assistant" ? "Assistant" : m.role === "tool" ? "Tool" : "You"}
+      {items.map((m) => {
+        const kind = m.role === "assistant" ? "assistant" : m.role === "tool" ? "tool" : "user";
+
+        if (m.role === "tool") {
+          const firstLine = (m.text ?? "").split("\n")[0] ?? "Tool output";
+          return (
+            <div key={m.id} className={`oc-msg ${kind}`}>
+              <div className="oc-msg-meta">Tool</div>
+              <details className="oc-tool-details">
+                <summary className="oc-tool-summary">{firstLine}</summary>
+                <div className="oc-msg-text">{m.text}</div>
+              </details>
+            </div>
+          );
+        }
+
+        return (
+          <div key={m.id} className={`oc-msg ${kind}`}>
+            <div className="oc-msg-meta">{m.role === "assistant" ? "Assistant" : "You"}</div>
+            <div className="oc-msg-text">{m.text}</div>
           </div>
-          <div className="oc-msg-text">{m.text}</div>
-        </div>
-      ))}
+        );
+      })}
       {items.length === 0 ? <div className="oc-empty">Say hi.</div> : null}
     </div>
   );
