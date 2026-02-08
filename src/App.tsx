@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import "./App.css";
-import { ChatList, ChatThreadView } from "./AppChat";
+import "./styles/app.css";
+import { ChatList } from "./AppChat";
 import { SettingsPanel } from "./SettingsPanel";
 import { PermissionsPanel } from "./PermissionsPanel";
 import { ModelsPanel } from "./ModelsPanel";
+import { SidebarNav, type SectionKey } from "./components/SidebarNav";
+import { ProfileSidebar } from "./panels/ProfileSidebar";
+import { TopBar } from "./panels/TopBar";
+import { ChatsPanel } from "./panels/ChatsPanel";
+import { GatewayPanel } from "./panels/GatewayPanel";
 import { autostartGet, autostartSet } from "./lib/autostart";
 import { onTrayNewChat, onTrayRestartGateway } from "./lib/tray-events";
 import {
@@ -34,15 +39,10 @@ import {
   type ProfilesStore,
 } from "./lib/tauri";
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
-}
-
 export default function App() {
   const [store, setStore] = useState<ProfilesStore | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [newProfileName, setNewProfileName] = useState("");
+  // profile create handled in ProfileSidebar
   const [gw, setGw] = useState<GatewayStatus | null>(null);
   const [gwLogs, setGwLogs] = useState<GatewayLogs | null>(null);
 
@@ -51,6 +51,7 @@ export default function App() {
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [draft, setDraft] = useState("");
   const [launchOnLogin, setLaunchOnLogin] = useState<boolean | null>(null);
+  const [section, setSection] = useState<SectionKey>("chats");
 
   const active = useMemo(() => {
     const id = store?.active_profile_id ?? null;
@@ -183,14 +184,13 @@ export default function App() {
     }
   }
 
-  async function createProfile() {
-    const name = newProfileName.trim();
-    if (!name) return;
+  async function createProfile(name: string) {
+    const n = name.trim();
+    if (!n) return;
     setBusy("Creating profile…");
     try {
-      const s = await profilesCreate(name);
+      const s = await profilesCreate(n);
       setStore(s);
-      setNewProfileName("");
     } finally {
       setBusy(null);
     }
@@ -332,228 +332,122 @@ export default function App() {
     }
   }
 
+  const topbarRight = (
+    <>
+      <div className="oc-toggle">
+        <label>
+          <input
+            type="checkbox"
+            checked={!!launchOnLogin}
+            disabled={launchOnLogin === null || !!busy}
+            onChange={async (e) => {
+              const on = e.currentTarget.checked;
+              setBusy(on ? "Enabling launch at login…" : "Disabling launch at login…");
+              try {
+                await autostartSet(on);
+                setLaunchOnLogin(on);
+              } finally {
+                setBusy(null);
+              }
+            }}
+          />
+          <span>Launch at login</span>
+        </label>
+      </div>
+
+      <button className="primary" type="button" onClick={demoSecretWrite} disabled={!active || !!busy}>
+        Set demo secret
+      </button>
+      <button type="button" onClick={demoSecretRead} disabled={!active || !!busy}>
+        Read
+      </button>
+      <button type="button" onClick={demoSecretDelete} disabled={!active || !!busy}>
+        Delete
+      </button>
+    </>
+  );
+
   return (
     <div className="oc-shell">
       <aside className="oc-sidebar">
-        <div className="oc-brand">
-          <div className="oc-dot" />
-          <div>
-            <div className="oc-title">OpenClaw</div>
-            <div className="oc-subtitle">Desktop (local-first)</div>
-          </div>
-        </div>
+        <ProfileSidebar
+          store={store}
+          busy={!!busy}
+          busyText={busy}
+          onCreate={async (name) => {
+            await createProfile(name);
+          }}
+          onSetActive={setActive}
+          onRename={renameProfile}
+          onDelete={deleteProfile}
+        />
 
         <div className="oc-section">
-          <div className="oc-section-title">Profiles</div>
-
-          <div className="oc-profile-create">
-            <input
-              value={newProfileName}
-              onChange={(e) => setNewProfileName(e.target.value)}
-              placeholder="New profile…"
-            />
-            <button onClick={createProfile} disabled={!newProfileName.trim() || !!busy}>
-              Add
-            </button>
-          </div>
-
-          <div className="oc-profile-list">
-            {(store?.profiles ?? []).map((p) => {
-              const isActive = p.id === (store?.active_profile_id ?? "");
-              return (
-                <div key={p.id} className={`oc-profile ${isActive ? "active" : ""}`}>
-                  <button className="oc-profile-main" onClick={() => setActive(p.id)} disabled={!!busy}>
-                    <div className="oc-avatar">{initials(p.name)}</div>
-                    <div className="oc-profile-meta">
-                      <div className="oc-profile-name">{p.name}</div>
-                      <div className="oc-profile-id">{p.id}</div>
-                    </div>
-                  </button>
-                  <div className="oc-profile-actions">
-                    <button onClick={() => renameProfile(p.id)} disabled={!!busy}>
-                      Rename
-                    </button>
-                    <button onClick={() => deleteProfile(p.id)} disabled={!!busy || store?.profiles.length === 1}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="oc-section-title">Sections</div>
+          <SidebarNav value={section} onChange={setSection} disabled={!!busy} />
         </div>
 
-        <div className="oc-foot">
-          <div className="oc-foot-line">{busy ?? "Ready"}</div>
-        </div>
+        {section === "chats" ? (
+          <div className="oc-section">
+            <div className="oc-section-title">Chats</div>
+            {/* ChatList includes create + list */}
+            <div className="oc-chat-sidebar">
+              {active ? (
+                <ChatList
+                  chats={chats}
+                  activeChatId={activeChatId}
+                  onSelect={(id) => setActiveChatId(id)}
+                  onCreate={createChat}
+                  onRename={renameChat}
+                  onDelete={deleteChat}
+                  busy={!!busy}
+                />
+              ) : (
+                <div className="oc-empty">Create/select a profile first.</div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </aside>
 
       <main className="oc-main">
-        <div className="oc-topbar">
-          <div className="oc-topbar-left">
-            <div className="oc-h1">{active ? active.name : "…"}</div>
-            <div className="oc-h2">Profile settings + secrets (Keychain)</div>
-          </div>
-          <div className="oc-topbar-right">
-            <div className="oc-toggle">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!launchOnLogin}
-                  disabled={launchOnLogin === null || !!busy}
-                  onChange={async (e) => {
-                    const on = e.currentTarget.checked;
-                    setBusy(on ? "Enabling launch at login…" : "Disabling launch at login…");
-                    try {
-                      await autostartSet(on);
-                      setLaunchOnLogin(on);
-                    } finally {
-                      setBusy(null);
-                    }
-                  }}
-                />
-                <span>Launch at login</span>
-              </label>
-            </div>
-
-            <button className="primary" onClick={demoSecretWrite} disabled={!active || !!busy}>
-              Set demo secret
-            </button>
-            <button onClick={demoSecretRead} disabled={!active || !!busy}>
-              Read
-            </button>
-            <button onClick={demoSecretDelete} disabled={!active || !!busy}>
-              Delete
-            </button>
-          </div>
-        </div>
+        <TopBar title={active ? active.name : "…"} subtitle="Local profiles · OpenClaw gateway" right={topbarRight} />
 
         <div className="oc-content">
           <div className="oc-grid">
-            <div className="oc-card">
-              <div className="oc-card-title">Chats (Milestone 3)</div>
-              <div className="oc-card-body">
-                <div className="oc-chat-layout">
-                  <div className="oc-chat-left">
-                    <ChatList
-                      chats={chats}
-                      activeChatId={activeChatId}
-                      onSelect={(id) => setActiveChatId(id)}
-                      onCreate={createChat}
-                      onRename={renameChat}
-                      onDelete={deleteChat}
-                      busy={!!busy}
-                    />
-                  </div>
-                  <div className="oc-chat-right">
-                    <div className="oc-thread-wrap">
-                      <div className="oc-thread-header">
-                        <div>
-                          <div className="oc-thread-title">
-                            {chats.find((c) => c.id === activeChatId)?.title ?? "Select a chat"}
-                          </div>
-                          <div className="oc-thread-sub">Native UI → OpenClaw CLI (agent turns via gateway)</div>
-                          {activeChatId ? (
-                            <div className="oc-thread-controls">
-                              <select
-                                className="oc-select"
-                                value={chats.find((c) => c.id === activeChatId)?.thinking ?? "low"}
-                                disabled={!!busy}
-                                onChange={(e) => updateChatSettings(activeChatId, { thinking: e.currentTarget.value })}
-                              >
-                                {[
-                                  "off",
-                                  "minimal",
-                                  "low",
-                                  "medium",
-                                  "high",
-                                ].map((t) => (
-                                  <option key={t} value={t}>
-                                    thinking: {t}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                className="oc-input"
-                                style={{ height: 34, padding: "6px 10px" }}
-                                placeholder="agent id (optional)"
-                                defaultValue={chats.find((c) => c.id === activeChatId)?.agent_id ?? ""}
-                                disabled={!!busy}
-                                onBlur={(e) => updateChatSettings(activeChatId, { agentId: e.currentTarget.value })}
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="oc-thread-actions">
-                          <button onClick={() => active && activeChatId && chatThread(active.id, activeChatId).then(setThread)} disabled={!active || !activeChatId || !!busy}>
-                            Refresh
-                          </button>
-                        </div>
-                      </div>
+            {section === "chats" ? (
+              <ChatsPanel
+                chats={chats}
+                activeChatId={activeChatId}
+                thread={thread}
+                draft={draft}
+                busy={!!busy}
+                onRefreshThread={async () => {
+                  if (!active || !activeChatId) return;
+                  const t = await chatThread(active.id, activeChatId);
+                  setThread(t);
+                }}
+                onUpdateChatSettings={updateChatSettings}
+                onDraftChange={setDraft}
+                onSend={send}
+              />
+            ) : null}
 
-                      <ChatThreadView messages={thread?.messages ?? []} />
+            {section === "gateway" ? (
+              <GatewayPanel
+                gw={gw}
+                logs={gwLogs}
+                busy={!!busy}
+                onRefresh={refreshGateway}
+                onStart={gwStart}
+                onStop={gwStop}
+                onRestart={gwRestart}
+              />
+            ) : null}
 
-                      <div className="oc-compose">
-                        <textarea
-                          value={draft}
-                          onChange={(e) => setDraft(e.target.value)}
-                          placeholder={activeChatId ? "Message…" : "Create a chat first"}
-                          disabled={!activeChatId || !!busy}
-                        />
-                        <button className="primary" onClick={send} disabled={!activeChatId || !!busy || !draft.trim()}>
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {active ? <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
-            {active ? <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
-            <PermissionsPanel />
-
-            <div className="oc-card">
-              <div className="oc-card-title">Gateway (Milestone 2)</div>
-              <div className="oc-card-body">
-                <div className="oc-row">
-                  <button className="primary" onClick={refreshGateway} disabled={!!busy}>
-                    Refresh
-                  </button>
-                  <button onClick={gwStart} disabled={!!busy}>
-                    Start
-                  </button>
-                  <button onClick={gwStop} disabled={!!busy}>
-                    Stop
-                  </button>
-                  <button onClick={gwRestart} disabled={!!busy}>
-                    Restart
-                  </button>
-                </div>
-
-                <div className="oc-mono">
-                  <div className="oc-mono-title">Status output</div>
-                  <pre>{gw?.stdout || "(not checked yet)"}</pre>
-                  {gw?.stderr ? (
-                    <>
-                      <div className="oc-mono-title">stderr</div>
-                      <pre className="danger">{gw.stderr}</pre>
-                    </>
-                  ) : null}
-                </div>
-
-                <div className="oc-mono">
-                  <div className="oc-mono-title">gateway.log (tail)</div>
-                  <pre>{gwLogs?.out || ""}</pre>
-                </div>
-
-                <div className="oc-mono">
-                  <div className="oc-mono-title">gateway.err.log (tail)</div>
-                  <pre className="danger">{gwLogs?.err || ""}</pre>
-                </div>
-              </div>
-            </div>
+            {section === "models" && active ? <ModelsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
+            {section === "permissions" ? <PermissionsPanel /> : null}
+            {section === "settings" && active ? <SettingsPanel profileId={active.id} busy={!!busy} onBusy={setBusy} /> : null}
           </div>
         </div>
       </main>
